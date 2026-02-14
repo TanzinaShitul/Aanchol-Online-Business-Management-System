@@ -67,6 +67,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['email'], $_POST['passw
      <link rel="icon" href="../images/uploads/logo/logo.png" type="image/png">
     <title>Admin Login - Aanchol</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="../css/login.css">
      <link rel="stylesheet" href="../css/style.css">
     <style>
         body {
@@ -112,8 +114,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['email'], $_POST['passw
                                    required>
                         </div>
                         <div class="mb-3">
-                            <label for="password" class="form-label">Password *</label>
-                            <input type="password" class="form-control" id="password" name="password" required>
+                             <label for="password" class="form-label">Password</label>
+                                <div class="form-control-wrapper">
+                                    <input type="password" class="form-control" id="password" name="password" required>
+                                    <button type="button" class="password-toggle" id="togglePassword">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                </div>
                         </div>
                         <div class="d-grid">
                             <button type="submit" class="btn btn-primary">Sign In</button>
@@ -125,9 +132,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['email'], $_POST['passw
                             <i class="fas fa-lock"></i> Restricted Access
                         </small>
                         <br>
-                        <small class="text-muted">
-                            Demo: admin@aanchol.com / 1234
-                        </small>
                     </div>
                 </div>
             </div>
@@ -136,5 +140,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['email'], $_POST['passw
     
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/js/all.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="../js/login.js"></script>
 </body>
 </html>
