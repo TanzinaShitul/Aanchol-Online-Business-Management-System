@@ -2,8 +2,8 @@
 require_once '../config/database.php';
 require_once '../includes/functions.php';
 
-if (!isLoggedIn()) {
-    redirect('login.php');
+if (!isAdmin()) {
+    die('Unauthorized');
 }
 
 if (!isset($_GET['id'])) {
@@ -16,12 +16,9 @@ $order_id = (int) $_GET['id'];
 $sql = "SELECT o.*, u.name, u.email, u.phone
         FROM orders o
         JOIN users u ON o.user_id = u.id
-        WHERE o.id = :id AND o.user_id = :user_id";
+        WHERE o.id = :id";
 $stmt = $conn->prepare($sql);
-$stmt->execute([
-    ':id' => $order_id,
-    ':user_id' => $_SESSION['user_id']
-]);
+$stmt->execute([':id' => $order_id]);
 $order = $stmt->fetch(PDO::FETCH_ASSOC);
 
 if (!$order) {
@@ -49,7 +46,7 @@ if (file_exists(__DIR__ . '/../vendor/autoload.php')) {
 // If Composer not available, die with helpful error message
 if (!$tcpdf_loaded) {
     die('<div style="font-family:Arial;padding:20px;"><h2>PDF Library Not Found</h2>' .
-         '<p>TCPDF is not installed. To enable PDF voucher downloads, please run:</p>' .
+         '<p>TCPDF is not installed. To enable PDF invoice downloads, please run:</p>' .
          '<pre style="background:#f4f4f4;padding:10px;border:1px solid #ddd;">' .
          'cd ' . __DIR__ . '/..<br>' .
          'composer install' .
@@ -61,13 +58,13 @@ if (!$tcpdf_loaded) {
 // ================= CREATE PDF =================
 $pdf = new TCPDF('P', 'mm', 'A4', true, 'UTF-8', false);
 $pdf->SetCreator('Aanchol');
-$pdf->SetAuthor('Aanchol');
-$pdf->SetTitle('Order Voucher');
+$pdf->SetAuthor('Aanchol Admin');
+$pdf->SetTitle('Order Invoice');
 $pdf->SetMargins(15, 15, 15);
 $pdf->AddPage();
 
 $html = '
-<h2 style="text-align:center;">Aanchol Order Voucher</h2>
+<h2 style="text-align:center;">Aanchol - Order Invoice</h2>
 <hr>
 
 <table cellpadding="4">
@@ -76,13 +73,20 @@ $html = '
     <td align="right"><strong>Date:</strong> ' . date('F d, Y', strtotime($order['order_date'])) . '</td>
 </tr>
 <tr>
-    <td colspan="2"><strong>Name:</strong> ' . $order['name'] . '</td>
+    <td colspan="2"><strong>Status:</strong> ' . ucfirst($order['status']) . '</td>
 </tr>
+</table>
+
+<br>
+
+<table cellpadding="4" width="100%">
 <tr>
-    <td colspan="2"><strong>Phone:</strong> ' . $order['phone'] . '</td>
-</tr>
-<tr>
-    <td colspan="2"><strong>Address:</strong> ' . $order['detailed_address'] . '</td>
+    <td width="50%"><strong>CUSTOMER INFORMATION:</strong><br>
+        Name: ' . $order['name'] . '<br>
+        Email: ' . $order['email'] . '<br>
+        Phone: ' . $order['phone'] . '<br>
+        Address: ' . str_replace("\n", "<br>", $order['detailed_address']) . '
+    </td>
 </tr>
 </table>
 
@@ -92,7 +96,7 @@ $html = '
 <tr style="background-color:#f2f2f2;">
     <th><b>Product</b></th>
     <th align="center"><b>Size</b></th>
-    <th align="center"><b>Price</b></th>
+    <th align="center"><b>Unit Price</b></th>
     <th align="center"><b>Qty</b></th>
     <th align="center"><b>Total</b></th>
 </tr>';
@@ -132,12 +136,12 @@ $html .= '
 <br><br>
 
 <p style="text-align:center;">
-Thank you for shopping with <strong>Aanchol</strong> <br>
-We hope to see you again!
+Payment Method: <strong>' . $order['payment_method'] . '</strong><br>
+Thank you for using <strong>Aanchol</strong>
 </p>
 ';
 
 $pdf->writeHTML($html, true, false, true, false, '');
-$pdf->Output('order-voucher-' . $order['order_number'] . '.pdf', 'D');
+$pdf->Output('invoice-' . $order['order_number'] . '.pdf', 'D');
 exit;
 ?>

@@ -76,29 +76,39 @@ function getUpazilas($district_id = null) {
     return $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
 
-function addToCart($user_id, $product_id, $quantity = 1) {
+function addToCart($user_id, $product_id, $quantity = 1, $size = null) {
     global $conn;
-    
-    // Check if already in cart
-    $sql = "SELECT * FROM cart WHERE user_id = :user_id AND product_id = :product_id";
+
+    // Normalize size to string (empty string if null) for comparison
+    $sizeVal = $size === null ? '' : (string)$size;
+
+    // Check if already in cart for same size
+    $sql = "SELECT * FROM cart WHERE user_id = :user_id AND product_id = :product_id AND COALESCE(size, '') = :size";
     $stmt = $conn->prepare($sql);
     $stmt->bindParam(':user_id', $user_id);
     $stmt->bindParam(':product_id', $product_id);
+    $stmt->bindParam(':size', $sizeVal);
     $stmt->execute();
-    
+
     if ($stmt->rowCount() > 0) {
-        // Update quantity
-        $sql = "UPDATE cart SET quantity = quantity + :quantity WHERE user_id = :user_id AND product_id = :product_id";
+        // Update quantity for that size
+        $sql = "UPDATE cart SET quantity = quantity + :quantity WHERE user_id = :user_id AND product_id = :product_id AND COALESCE(size, '') = :size";
+        $stmt = $conn->prepare($sql);
+        $stmt->bindParam(':quantity', $quantity);
+        $stmt->bindParam(':user_id', $user_id);
+        $stmt->bindParam(':product_id', $product_id);
+        $stmt->bindParam(':size', $sizeVal);
+        return $stmt->execute();
     } else {
-        // Insert new
-        $sql = "INSERT INTO cart (user_id, product_id, quantity) VALUES (:user_id, :product_id, :quantity)";
+        // Insert new with size
+        $sql = "INSERT INTO cart (user_id, product_id, quantity, size) VALUES (:user_id, :product_id, :quantity, :size)";
+        $stmt = $conn->prepare($sql);
+        $stmt->bindParam(':user_id', $user_id);
+        $stmt->bindParam(':product_id', $product_id);
+        $stmt->bindParam(':quantity', $quantity);
+        $stmt->bindParam(':size', $sizeVal);
+        return $stmt->execute();
     }
-    
-    $stmt = $conn->prepare($sql);
-    $stmt->bindParam(':user_id', $user_id);
-    $stmt->bindParam(':product_id', $product_id);
-    $stmt->bindParam(':quantity', $quantity);
-    return $stmt->execute();
 }
 
 function getCartItems($user_id) {
@@ -121,6 +131,11 @@ function getCartTotal($user_id) {
     return $total;
 }
 
+function getShippingCost($division_id) {
+    // Division ID 1 = Dhaka: 80 BDT, All others: 130 BDT
+    return ($division_id == 1) ? 80 : 130;
+}
+
 function placeOrder($user_id, $division_id, $district_id, $upazila_id, $detailed_address, $phone) {
     global $conn;
     
@@ -129,7 +144,9 @@ function placeOrder($user_id, $division_id, $district_id, $upazila_id, $detailed
         
         // Generate order number
         $order_number = 'ORD' . date('YmdHis') . rand(100, 999);
-        $total_amount = getCartTotal($user_id);
+        $cart_total = getCartTotal($user_id);
+        $shipping = getShippingCost($division_id);
+        $total_amount = $cart_total + $shipping;
         
         // Create order
         $sql = "INSERT INTO orders (user_id, order_number, total_amount, division_id, district_id, upazila_id, detailed_address, phone) 
@@ -149,13 +166,16 @@ function placeOrder($user_id, $division_id, $district_id, $upazila_id, $detailed
         // Add order items
         $cart_items = getCartItems($user_id);
         foreach ($cart_items as $item) {
-            $sql = "INSERT INTO order_items (order_id, product_id, quantity, price) 
-                    VALUES (:order_id, :product_id, :quantity, :price)";
+            // Persist size with order item (if present)
+            $sql = "INSERT INTO order_items (order_id, product_id, quantity, price, size) 
+                VALUES (:order_id, :product_id, :quantity, :price, :size)";
             $stmt = $conn->prepare($sql);
             $stmt->bindParam(':order_id', $order_id);
             $stmt->bindParam(':product_id', $item['product_id']);
             $stmt->bindParam(':quantity', $item['quantity']);
             $stmt->bindParam(':price', $item['price']);
+            $sizeVal = isset($item['size']) ? $item['size'] : null;
+            $stmt->bindParam(':size', $sizeVal);
             $stmt->execute();
             
             // Update product stock
@@ -233,5 +253,9 @@ function getTotalSales($month, $year) {
             default:
                 return 'fas fa-box';
         }
+    }
+
+function getWhereAmI() {
+        return basename($_SERVER['PHP_SELF']);
     }
 ?>

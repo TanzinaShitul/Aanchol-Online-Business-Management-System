@@ -72,6 +72,9 @@ $cart_total = getCartTotal($_SESSION['user_id']);
                                 <div class="col-md-4">
                                     <h6><?= htmlspecialchars($item['name']) ?></h6>
                                     <p class="text-muted mb-0">৳<?= number_format($item['price'], 2) ?></p>
+                                    <?php if (!empty($item['size'])): ?>
+                                        <small class="text-muted">Size: <?= htmlspecialchars($item['size']) ?></small><br>
+                                    <?php endif; ?>
                                     <?php if ($item['quantity'] > $item['stock']): ?>
                                         <small class="text-danger">Only <?= $item['stock'] ?> available!</small>
                                     <?php endif; ?>
@@ -143,7 +146,6 @@ $cart_total = getCartTotal($_SESSION['user_id']);
                                 <ul class="small">
                                     <li>Cash on Delivery available</li>
                                     <li>Delivery within 3-5 business days</li>
-                                    <li>Free delivery for orders over ৳1000</li>
                                 </ul>
                             </div>
                         </div>

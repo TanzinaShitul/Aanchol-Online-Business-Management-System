@@ -96,18 +96,26 @@ $categories = getCategories();
                                 </div>
                                 <div>
                                     <?php if ($product['stock'] > 0): ?>
-                                        <a href="product-details.php?id=<?= $product['id'] ?>" class="btn btn-sm btn-primary">
-                                            <i class="fas fa-eye"></i> View
-                                        </a>
-                                        <?php if (isLoggedIn()): ?>
-                                            <form method="POST" action="add-to-cart.php" class="d-inline">
-                                                <input type="hidden" name="product_id" value="<?= $product['id'] ?>">
-                                                <input type="hidden" name="quantity" value="1">
-                                                <button type="submit" class="btn btn-sm btn-success">
-                                                    <i class="fas fa-cart-plus"></i>
-                                                </button>
-                                            </form>
-                                        <?php endif; ?>
+                                            <a href="product-details.php?id=<?= $product['id'] ?>" class="btn btn-sm btn-primary">
+                                                <i class="fas fa-eye"></i> View
+                                            </a>
+                                            <?php if (isLoggedIn()):
+                                                $cat = strtolower($product['category_name'] ?? '');
+                                                // Require users to select size on product page for these categories
+                                                if (in_array($cat, ['bangles','dress','panjabi'])): ?>
+                                                    <a href="product-details.php?id=<?= $product['id'] ?>" class="btn btn-sm btn-success">
+                                                        <i class="fas fa-cart-plus"></i>
+                                                    </a>
+                                                <?php else: ?>
+                                                    <form method="POST" action="add-to-cart.php" class="d-inline">
+                                                        <input type="hidden" name="product_id" value="<?= $product['id'] ?>">
+                                                        <input type="hidden" name="quantity" value="1">
+                                                        <button type="submit" class="btn btn-sm btn-success">
+                                                            <i class="fas fa-cart-plus"></i>
+                                                        </button>
+                                                    </form>
+                                                <?php endif; ?>
+                                            <?php endif; ?>
                                     <?php else: ?>
                                         <button class="btn btn-sm btn-secondary" disabled>Out of Stock</button>
                                     <?php endif; ?>

@@ -21,11 +21,34 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['add_to_cart'])) {
     }
     
     $quantity = $_POST['quantity'] ?? 1;
-    
-    if (addToCart($_SESSION['user_id'], $product_id, $quantity)) {
-        $success = "Product added to cart successfully!";
+    $size = isset($_POST['size']) ? trim($_POST['size']) : null;
+
+    // Category-specific size rules
+    $cat = strtolower($product['category_name'] ?? '');
+    $bangleSizes = ['22','24','26'];
+    $clothingSizes = ['M','L','XL','XXL'];
+
+    if (in_array($cat, ['bangles'])) {
+        if (empty($size) || !in_array($size, $bangleSizes)) {
+            $error = "Please select a valid bangle size.";
+        }
+    } elseif (in_array($cat, ['dress','panjabi'])) {
+        if (empty($size) || !in_array(strtoupper($size), $clothingSizes)) {
+            $error = "Please select a valid size (M, L, XL, XXL).";
+        } else {
+            $size = strtoupper($size);
+        }
     } else {
-        $error = "Failed to add product to cart!";
+        // Bags and Sarees - no size
+        $size = null;
+    }
+
+    if (!isset($error)) {
+        if (addToCart($_SESSION['user_id'], $product_id, $quantity, $size)) {
+            $success = "Product added to cart successfully!";
+        } else {
+            $error = "Failed to add product to cart!";
+        }
     }
 }
 ?>
@@ -113,6 +136,33 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['add_to_cart'])) {
                                                min="1" 
                                                max="<?= $product['stock'] ?>">
                                     </div>
+                                    <?php
+                                    $cat = strtolower($product['category_name'] ?? '');
+                                    if (in_array($cat, ['bangles'])): ?>
+                                    <div class="col-md-3 mb-3">
+                                        <label for="size" class="form-label">Size:</label>
+                                        <select name="size" id="size" class="form-select">
+                                            <option value="">Select size</option>
+                                            <option value="22">22</option>
+                                            <option value="24">24</option>
+                                            <option value="26">26</option>
+                                        </select>
+                                    </div>
+                                    <?php elseif (in_array($cat, ['dress','panjabi'])): ?>
+                                    <div class="col-md-3 mb-3">
+                                        <label for="size" class="form-label">Size:</label>
+                                        <select name="size" id="size" class="form-select">
+                                            <option value="">Select size</option>
+                                            <option value="M">M</option>
+                                            <option value="L">L</option>
+                                            <option value="XL">XL</option>
+                                            <option value="XXL">XXL</option>
+                                        </select>
+                                    </div>
+                                    <?php else: ?>
+                                        <input type="hidden" name="size" value="">
+                                    <?php endif; ?>
+
                                     <div class="col-md-9 mb-3">
                                         <button type="submit" 
                                                 name="add_to_cart" 

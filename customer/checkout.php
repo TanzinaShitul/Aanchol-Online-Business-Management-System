@@ -28,8 +28,33 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $phone = $_POST['phone'];
     $notes = $_POST['notes'] ?? '';
     
+    // Get location names to include in address
+    $sql = "SELECT name_en FROM divisions WHERE id = :id";
+    $stmt = $conn->prepare($sql);
+    $stmt->bindParam(':id', $division_id);
+    $stmt->execute();
+    $division = $stmt->fetch(PDO::FETCH_ASSOC);
+    $division_name = $division['name_en'] ?? '';
+    
+    $sql = "SELECT name_en FROM districts WHERE id = :id";
+    $stmt = $conn->prepare($sql);
+    $stmt->bindParam(':id', $district_id);
+    $stmt->execute();
+    $district = $stmt->fetch(PDO::FETCH_ASSOC);
+    $district_name = $district['name_en'] ?? '';
+    
+    $sql = "SELECT name_en FROM upazilas WHERE id = :id";
+    $stmt = $conn->prepare($sql);
+    $stmt->bindParam(':id', $upazila_id);
+    $stmt->execute();
+    $upazila = $stmt->fetch(PDO::FETCH_ASSOC);
+    $upazila_name = $upazila['name_en'] ?? '';
+    
+    // Build complete address with division, district, upazila
+    $complete_address = $detailed_address . "\n" . $upazila_name . ", " . $district_name . ", " . $division_name;
+    
     // Place order
-    $order_id = placeOrder($_SESSION['user_id'], $division_id, $district_id, $upazila_id, $detailed_address, $phone);
+    $order_id = placeOrder($_SESSION['user_id'], $division_id, $district_id, $upazila_id, $complete_address, $phone);
     
     if ($order_id) {
         // Get order number for confirmation
@@ -207,12 +232,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                             </div>
                             <div class="d-flex justify-content-between mb-2">
                                 <div>Shipping</div>
-                                <div>৳50.00</div>
+                                <div id="shipping-cost">৳80.00</div>
                             </div>
                             <hr>
                             <div class="d-flex justify-content-between fw-bold">
                                 <div>Total</div>
-                                <div class="text-primary">৳<?= number_format($subtotal + 50, 2) ?></div>
+                                <div class="text-primary" id="total-cost">৳<?= number_format($subtotal + 80, 2) ?></div>
                             </div>
                         </div>
                         
@@ -225,10 +250,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                             </ul>
                         </div>
                         
-                        <div class="alert alert-warning mt-3">
-                            <i class="fas fa-exclamation-triangle"></i>
-                            Please review your order before confirming. You will receive an order confirmation email.
-                        </div>
+    
                     </div>
                 </div>
             </div>
@@ -239,6 +261,24 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
+        const subtotal = <?= $subtotal ?>;
+        
+        // Calculate and update shipping and total based on division
+        function updateShippingCost(divisionId) {
+            let shipping = 80; // Default for Dhaka
+            
+            // Check if division is Dhaka (ID = 1)
+            if (divisionId === '1' || divisionId === 1) {
+                shipping = 80;
+            } else if (divisionId) {
+                shipping = 130; // Outside Dhaka
+            }
+            
+            const total = subtotal + shipping;
+            document.getElementById('shipping-cost').textContent = '৳' + shipping.toFixed(2);
+            document.getElementById('total-cost').textContent = '৳' + total.toFixed(2);
+        }
+        
         // Enable/disable dropdowns based on current selections
         document.addEventListener('DOMContentLoaded', function() {
             const divisionSelect = document.getElementById('division');
@@ -248,6 +288,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             // Enable district if division is selected
             if (divisionSelect.value) {
                 districtSelect.disabled = false;
+                updateShippingCost(divisionSelect.value);
             }
             
             // Enable upazila if district is selected
@@ -260,6 +301,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             const divisionId = this.value;
             const districtSelect = document.getElementById('district');
             const upazilaSelect = document.getElementById('upazila');
+            
+            // Update shipping cost based on division
+            updateShippingCost(divisionId);
             
             // Reset districts and upazilas
             districtSelect.innerHTML = '<option value="">Select District</option>';

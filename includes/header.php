@@ -1,5 +1,15 @@
 <?php
 require_once '../config/database.php';
+require_once __DIR__ . '/functions.php';
+// Use $cart_items if provided by the caller, otherwise fetch from DB when logged in
+if (isset($cart_items)) {
+    $cart_items_array = $cart_items;
+} elseif (function_exists('isLoggedIn') && isLoggedIn() && isset($_SESSION['user_id'])) {
+    $cart_items_array = getCartItems($_SESSION['user_id']);
+} else {
+    $cart_items_array = [];
+}
+$cartCount = is_array($cart_items_array) ? count($cart_items_array) : 0;
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -30,11 +40,18 @@ require_once '../config/database.php';
                         <li class="nav-item"><a class="nav-link text-danger" href="admin/dashboard.php">Admin Panel</a></li>
                     <?php endif; ?>
                 </ul>
-                <div class="d-flex">
+                <div class="d-flex align-items-center gap-3">
                     <?php if (isLoggedIn()): ?>
-                        <a href="cart.php" class="btn btn-outline-primary me-2">
+                       
+                        <a href="cart.php" class="btn btn-outline-primary me-2 position-relative">
                             <i class="fas fa-shopping-cart"></i> Cart
-                        </a>
+    
+                             <?php if ($cartCount > 0): ?>
+                             <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
+                             <?php echo $cartCount; ?>
+                             </span>
+                             <?php endif; ?>
+                        </a>                        
                         <div class="dropdown">
                             <button class="btn btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
                                 <i class="fas fa-user"></i> <?= $_SESSION['name'] ?>
@@ -52,8 +69,10 @@ require_once '../config/database.php';
                             </ul>
                         </div>
                     <?php else: ?>
-                        <a href="customer/login.php" class="btn btn-outline-primary me-2">Login</a>
-                        <a href="customer/register.php" class="btn btn-primary">Register</a>
+                    <a href="<?php echo (getWhereAmI() == 'products.php'|| getWhereAmI() == 'product-details.php') 
+                        ? 'login.php' : 'customer/login.php'; ?>" class="btn btn-outline-primary me-2"> Login</a>
+                     <a href="<?php echo (getWhereAmI() == 'products.php'|| getWhereAmI() == 'product-details.php') 
+                        ? 'register.php' : 'customer/register.php'; ?>" class="btn btn-outline-primary me-2"> Register</a>
                     <?php endif; ?>
                 </div>
             </div>

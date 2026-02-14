@@ -128,6 +128,7 @@ $order_items = $stmt->fetchAll(PDO::FETCH_ASSOC);
                         <thead class="table-light">
                             <tr>
                                 <th>Product</th>
+                                <th>Size</th>
                                 <th>Price</th>
                                 <th>Quantity</th>
                                 <th>Total</th>
@@ -145,6 +146,7 @@ $order_items = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                             </div>
                                         </div>
                                     </td>
+                                    <td><?= !empty($item['size']) ? htmlspecialchars($item['size']) : '-' ?></td>
                                     <td>৳<?= number_format($item['price'], 2) ?></td>
                                     <td><?= $item['quantity'] ?></td>
                                     <td>৳<?= number_format($item['price'] * $item['quantity'], 2) ?></td>
@@ -152,16 +154,23 @@ $order_items = $stmt->fetchAll(PDO::FETCH_ASSOC);
                             <?php endforeach; ?>
                         </tbody>
                         <tfoot>
+                            <?php
+                            $subtotal = 0;
+                            foreach ($order_items as $item) {
+                                $subtotal += $item['price'] * $item['quantity'];
+                            }
+                            $shipping = $order['total_amount'] - $subtotal;
+                            ?>
                             <tr>
-                                <td colspan="3" class="text-end"><strong>Subtotal:</strong></td>
-                                <td><strong>৳<?= number_format($order['total_amount'] - 50, 2) ?></strong></td>
+                                <td colspan="4" class="text-end"><strong>Subtotal:</strong></td>
+                                <td><strong>৳<?= number_format($subtotal, 2) ?></strong></td>
                             </tr>
                             <tr>
-                                <td colspan="3" class="text-end"><strong>Shipping:</strong></td>
-                                <td><strong>৳50.00</strong></td>
+                                <td colspan="4" class="text-end"><strong>Shipping:</strong></td>
+                                <td><strong>৳<?= number_format($shipping, 2) ?></strong></td>
                             </tr>
                             <tr class="table-active">
-                                <td colspan="3" class="text-end"><strong>Total:</strong></td>
+                                <td colspan="4" class="text-end"><strong>Total:</strong></td>
                                 <td><strong
                                         class="text-primary">৳<?= number_format($order['total_amount'], 2) ?></strong>
                                 </td>

@@ -127,3 +127,13 @@ body {
 .form-control-wrapper {
     position: relative;
 }
+.cart-badge {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    background: red;
+    color: white;
+    font-size: 12px;
+    padding: 3px 6px;
+    border-radius: 50%;
+}

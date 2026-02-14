@@ -159,6 +159,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['update_status'])) {
                                     <tr>
                                         <th>#</th>
                                         <th>Product</th>
+                                        <th>Size</th>
                                         <th>Unit Price</th>
                                         <th>Quantity</th>
                                         <th>Total</th>
@@ -181,6 +182,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['update_status'])) {
                                                 </div>
                                             </div>
                                         </td>
+                                        <td><?= !empty($item['size']) ? htmlspecialchars($item['size']) : '-' ?></td>
                                         <td>৳<?= number_format($item['unit_price'], 2) ?></td>
                                         <td><?= $item['quantity'] ?></td>
                                         <td>৳<?= number_format($item['price'] * $item['quantity'], 2) ?></td>
@@ -188,13 +190,20 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['update_status'])) {
                                     <?php endforeach; ?>
                                 </tbody>
                                 <tfoot>
+                                    <?php
+                                    $subtotal = 0;
+                                    foreach ($order_items as $item) {
+                                        $subtotal += $item['price'] * $item['quantity'];
+                                    }
+                                    $shipping = $order['total_amount'] - $subtotal;
+                                    ?>
                                     <tr>
                                         <td colspan="4" class="text-end"><strong>Subtotal:</strong></td>
-                                        <td><strong>৳<?= number_format($order['total_amount'] - 50, 2) ?></strong></td>
+                                        <td><strong>৳<?= number_format($subtotal, 2) ?></strong></td>
                                     </tr>
                                     <tr>
                                         <td colspan="4" class="text-end"><strong>Shipping:</strong></td>
-                                        <td><strong>৳50.00</strong></td>
+                                        <td><strong>৳<?= number_format($shipping, 2) ?></strong></td>
                                     </tr>
                                     <tr class="table-active">
                                         <td colspan="4" class="text-end"><strong>Total:</strong></td>
@@ -276,9 +285,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['update_status'])) {
                             <a href="orders.php" class="btn btn-secondary">
                                 <i class="fas fa-arrow-left"></i> Back to Orders
                             </a>
-                            <button onclick="window.print()" class="btn btn-primary">
-                                <i class="fas fa-print"></i> Print Invoice
-                            </button>
+                            <a href="download-invoice.php?id=<?= $order['id'] ?>" class="btn btn-primary">
+                                <i class="fas fa-download"></i> Download PDF Invoice
+                            </a>
+                        
                         </div>
                     </div>
                 </div>
