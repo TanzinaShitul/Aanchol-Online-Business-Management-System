@@ -113,9 +113,12 @@ $categories = getCategories();
                                         <td><?= $product['category_name'] ?></td>
                                         <td>৳<?= number_format($product['price'], 2) ?></td>
                                         <td>
-                                            <?= $product['stock'] ?>
-                                            <?php if ($product['stock'] < 5): ?>
-                                                <span class="badge bg-warning">Low</span>
+                                            <?php if ($product['stock'] == 0): ?>
+                                                <span class="badge bg-danger">Out of Stock</span>
+                                            <?php elseif ($product['stock'] <= 5): ?>
+                                                <span class="badge bg-warning"><?= $product['stock'] ?> Left</span>
+                                            <?php else: ?>
+                                                <?= $product['stock'] ?>
                                             <?php endif; ?>
                                         </td>
                                         <td>
@@ -153,7 +156,7 @@ $categories = getCategories();
                                 <div class="card bg-light">
                                     <div class="card-body">
                                         <?php
-                                        $sql = "SELECT COUNT(*) as low_stock FROM products WHERE stock <= 5 AND status = 'active'";
+                                        $sql = "SELECT COUNT(*) as low_stock FROM products WHERE stock BETWEEN 1 AND 5 AND status = 'active'";
                                         $stmt = $conn->query($sql);
                                         $low_stock = $stmt->fetch(PDO::FETCH_ASSOC)['low_stock'];
                                         ?>

@@ -39,7 +39,7 @@ foreach ($sales as $sale) {
         $sale['status'],
         $sale['item_count'],
         $sale['phone'],
-        substr($sale['shipping_address'], 0, 50) . '...'
+        substr($sale['detailed_address'], 0, 50)
     ]);
 }
 
