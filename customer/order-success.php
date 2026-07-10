@@ -43,7 +43,6 @@ unset($_SESSION['order_success']);
                         <div class="card bg-light mb-4">
                             <div class="card-body">
                                 <h5>Order Number: <span class="text-primary"><?= $order_number ?></span></h5>
-                                <p class="mb-0">We have sent an order confirmation to your email.</p>
                             </div>
                         </div>
                         
@@ -51,7 +50,6 @@ unset($_SESSION['order_success']);
                             <div class="col-md-6">
                                 <h5>What happens next?</h5>
                                 <ul>
-                                    <li>You will receive an order confirmation email</li>
                                     <li>We will process your order within 24 hours</li>
                                     <li>You will receive updates on your order status</li>
                                     <li>Delivery within 3-5 business days</li>
@@ -60,8 +58,8 @@ unset($_SESSION['order_success']);
                             <div class="col-md-6">
                                 <h5>Need Help?</h5>
                                 <ul>
-                                    <li>Contact: +880 1XXX-XXXXXX</li>
-                                    <li>Email: support@aanchol.com</li>
+                                    <li>Contact: +880 1849110904</li>
+                                    <li>Email: aanchol20@gmail.com</li>
                                     <li>Check <a href="order-history.php">Order History</a> for updates</li>
                                 </ul>
                             </div>

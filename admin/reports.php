@@ -62,7 +62,7 @@ $current_year = date('Y');
                     </div>
                     <div class="col-md-4 d-flex align-items-end">
                         <button type="submit" class="btn btn-primary w-100">
-                            <i class="fas fa-download"></i> Download CSV Report
+                            <i class="fas fa-download"></i> Download Report
                         </button>
                     </div>
                 </form>

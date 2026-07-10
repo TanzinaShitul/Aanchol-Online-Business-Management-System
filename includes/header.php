@@ -65,7 +65,7 @@ $cartCount = is_array($cart_items_array) ? count($cart_items_array) : 0;
                                     <li><a class="dropdown-item" href="order-history.php">My Orders</a></li>
                                     <li><hr class="dropdown-divider"></li>
                                 <?php endif; ?>
-                                <li><a class="dropdown-item text-danger" href="<?= isAdmin() ? 'admin/logout.php' : 'customer/logout.php' ?>">Logout</a></li>
+                                <!-- <li><a class="dropdown-item text-danger" href="<?= isAdmin() ? 'admin/logout.php' : 'customer/logout.php' ?>">Logout</a></li> -->
                             </ul>
                         </div>
                     <?php else: ?>
