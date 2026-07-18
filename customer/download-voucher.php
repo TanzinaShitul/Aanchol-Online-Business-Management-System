@@ -28,6 +28,11 @@ if (!$order) {
     die('Order not found');
 }
 
+if ($order['payment_method'] === 'Cash on Delivery' || $order['payment_status'] !== 'paid') {
+    header('Location: order-details.php?id=' . $order_id);
+    exit;
+}
+
 // ================= ORDER ITEMS =================
 $sql = "SELECT oi.*, p.name AS product_name
         FROM order_items oi
@@ -77,6 +82,15 @@ $html = '
 </tr>
 <tr>
     <td colspan="2"><strong>Phone:</strong> ' . $order['phone'] . '</td>
+</tr>
+<tr>
+    <td colspan="2"><strong>Payment Method:</strong> ' . $order['payment_method'] . '</td>
+</tr>
+<tr>
+    <td colspan="2"><strong>Payment Status:</strong> ' . ucfirst($order['payment_status']) . '</td>
+</tr>
+<tr>
+    <td colspan="2"><strong>Paid Amount:</strong> BDT ' . number_format((float)$order['total_amount'], 2) . '</td>
 </tr>
 <tr>
     <td colspan="2"><strong>Address:</strong> ' . $order['detailed_address'] . '</td>

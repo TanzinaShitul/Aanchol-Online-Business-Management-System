@@ -39,6 +39,7 @@ $order_items = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 $tracking_events = getTrackingEvents($order_id);
 $status_steps = ['pending', 'confirmed', 'processing', 'shipped', 'delivered'];
+$can_download_invoice = ($order['payment_method'] !== 'Cash on Delivery' && $order['payment_status'] === 'paid');
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -79,7 +80,7 @@ $status_steps = ['pending', 'confirmed', 'processing', 'shipped', 'delivered'];
                     <i class="fas fa-exclamation-triangle"></i>
                     Payment for this order is <strong><?= htmlspecialchars($order['payment_status']) ?></strong>.
                 </span>
-                <a href="sslcommerz-initiate.php?order=<?= urlencode($order['order_number']) ?>" class="btn btn-sm btn-primary">
+                <a href="payment-simulate.php?order=<?= urlencode($order['order_number']) ?>" class="btn btn-sm btn-primary">
                     <i class="fas fa-credit-card"></i> Retry Payment
                 </a>
             </div>
@@ -188,7 +189,7 @@ $status_steps = ['pending', 'confirmed', 'processing', 'shipped', 'delivered'];
                                 <tr>
                                     <td>
                                         <div class="d-flex align-items-center">
-                                            <img src="<?= htmlspecialchars(getProductImageUrl($item['image'] ?? null)) ?>" class="me-3"
+                                            <img src="../uploads/<?= $item['image'] ?: 'default.jpg' ?>" class="me-3"
                                                 style="width: 50px; height: 50px; object-fit: cover;">
                                             <div>
                                                 <strong><?= htmlspecialchars($item['product_name']) ?></strong>
@@ -304,9 +305,15 @@ $status_steps = ['pending', 'confirmed', 'processing', 'shipped', 'delivered'];
                     <a href="../index.php" class="btn btn-primary">
                         <i class="fas fa-home"></i> Continue Shopping
                     </a>
-                    <a href="download-voucher.php?id=<?= $order['id'] ?>" class="btn btn-success">
-                        <i class="fas fa-download"></i> Download Voucher
-                    </a>
+                    <?php if ($can_download_invoice): ?>
+                        <a href="download-voucher.php?id=<?= $order['id'] ?>" class="btn btn-success">
+                            <i class="fas fa-download"></i> Download Invoice
+                        </a>
+                    <?php else: ?>
+                        <button type="button" class="btn btn-secondary" disabled>
+                            <i class="fas fa-download"></i> Invoice unavailable
+                        </button>
+                    <?php endif; ?>
                 </div>
             </div>
         </div>

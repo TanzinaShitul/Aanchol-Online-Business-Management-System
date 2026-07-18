@@ -1,6 +1,7 @@
 <?php
 require_once '../config/database.php';
 require_once '../includes/functions.php';
+require_once '../includes/sslcommerz.php';
 
 if (!isLoggedIn()) {
     redirect('login.php');
@@ -50,6 +51,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         'nagad'  => 'Nagad',
         'rocket' => 'Rocket',
         'card'   => 'Card',
+        'online' => 'SSLCommerz',
     ];
     $payment_choice = $_POST['payment_method'] ?? 'cod';
     $payment_method = $payment_map[$payment_choice] ?? 'Cash on Delivery';
@@ -94,26 +96,36 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         }
     }
     
-    // Place order
+    // Place order (stock is decremented and cart cleared here regardless of payment method)
     $order_id = placeOrder($_SESSION['user_id'], $division_id, $district_id, $upazila_id, $complete_address, $phone, $coupon_id, $coupon_code, $discount_amount, $payment_method);
     
     if ($order_id) {
-        // Get order number for confirmation
-        $sql = "SELECT order_number FROM orders WHERE id = :id";
+        $sql = "SELECT * FROM orders WHERE id = :id";
         $stmt = $conn->prepare($sql);
         $stmt->bindParam(':id', $order_id);
         $stmt->execute();
-        $order = $stmt->fetch(PDO::FETCH_ASSOC);
+        $new_order = $stmt->fetch(PDO::FETCH_ASSOC);
         
         unset($_SESSION['coupon_code']);
 
         if ($payment_choice === 'cod') {
-            $_SESSION['order_success'] = $order['order_number'];
+            $_SESSION['order_success'] = $new_order['order_number'];
             redirect('order-success.php');
-        } elseif ($payment_choice === 'card') {
-            redirect('sslcommerz-initiate.php?order=' . urlencode($order['order_number']));
         } else {
-            redirect('sslcommerz-initiate.php?order=' . urlencode($order['order_number']));
+            $sslcz_response = sslcommerzInitSession($new_order, [
+                'name' => $user['name'],
+                'email' => $user['email'],
+                'phone' => $phone,
+                'detailed_address' => $complete_address,
+            ]);
+
+            if (isset($sslcz_response['status']) && $sslcz_response['status'] === 'SUCCESS' && !empty($sslcz_response['GatewayPageURL'])) {
+                header('Location: ' . $sslcz_response['GatewayPageURL']);
+                exit();
+            }
+
+            $_SESSION['payment_order'] = $new_order['order_number'];
+            redirect('payment-simulate.php?order=' . urlencode($new_order['order_number']) . '&gateway=sslcommerz');
         }
     } else {
         $error = "Failed to place order. Please try again!";
@@ -230,7 +242,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                                     <h6 class="mb-0">Payment Method</h6>
                                 </div>
                                 <div class="card-body">
-                                    <div class="form-check mb-2">
+                                    <div class="form-check mb-3">
                                         <input class="form-check-input" type="radio" name="payment_method" id="cod" value="cod" checked>
                                         <label class="form-check-label" for="cod">
                                             <strong>Cash on Delivery (COD)</strong><br>
@@ -261,12 +273,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                                     <div class="form-check mb-2">
                                         <input class="form-check-input" type="radio" name="payment_method" id="card" value="card">
                                         <label class="form-check-label" for="card">
-                                            <strong>Credit / Debit Card</strong>
+                                            <strong>Card</strong>
                                             <small class="text-muted d-block">Pay via card (sandbox)</small>
                                         </label>
                                     </div>
                                     <div class="alert alert-warning mt-3 mb-0 small">
-                                        <i class="fas fa-flask"></i> Online payment options are running in <strong>sandbox/test mode</strong> — no real transactions occur.
+                                        <i class="fas fa-flask"></i> Online payment runs on the <strong>SSLCommerz Sandbox</strong> — a real test environment, no actual money is charged.
                                     </div>
                                 </div>
                             </div>
@@ -360,35 +372,27 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         const subtotal = <?= $subtotal ?>;
         const couponDiscount = <?= $coupon_discount ?>;
         
-        // Calculate and update shipping and total based on division
         function updateShippingCost(divisionId) {
-            let shipping = 80; // Default for Dhaka
-            
-            // Check if division is Dhaka (ID = 1)
+            let shipping = 80;
             if (divisionId === '1' || divisionId === 1) {
                 shipping = 80;
             } else if (divisionId) {
-                shipping = 130; // Outside Dhaka
+                shipping = 130;
             }
-            
             const total = Math.max(subtotal + shipping - couponDiscount, 0);
             document.getElementById('shipping-cost').textContent = '৳' + shipping.toFixed(2);
             document.getElementById('total-cost').textContent = '৳' + total.toFixed(2);
         }
         
-        // Enable/disable dropdowns based on current selections
         document.addEventListener('DOMContentLoaded', function() {
             const divisionSelect = document.getElementById('division');
             const districtSelect = document.getElementById('district');
             const upazilaSelect = document.getElementById('upazila');
             
-            // Enable district if division is selected
             if (divisionSelect.value) {
                 districtSelect.disabled = false;
                 updateShippingCost(divisionSelect.value);
             }
-            
-            // Enable upazila if district is selected
             if (districtSelect.value) {
                 upazilaSelect.disabled = false;
             }
@@ -399,17 +403,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             const districtSelect = document.getElementById('district');
             const upazilaSelect = document.getElementById('upazila');
             
-            // Update shipping cost based on division
             updateShippingCost(divisionId);
             
-            // Reset districts and upazilas
             districtSelect.innerHTML = '<option value="">Select District</option>';
             upazilaSelect.innerHTML = '<option value="">Select Upazila</option>';
             districtSelect.disabled = true;
             upazilaSelect.disabled = true;
             
             if (divisionId) {
-                // Fetch districts via AJAX
                 fetch('../includes/get_locations.php?type=districts&division_id=' + divisionId)
                     .then(response => response.json())
                     .then(data => {
@@ -425,12 +426,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             const districtId = this.value;
             const upazilaSelect = document.getElementById('upazila');
             
-            // Reset upazilas
             upazilaSelect.innerHTML = '<option value="">Select Upazila</option>';
             upazilaSelect.disabled = true;
             
             if (districtId) {
-                // Fetch upazilas via AJAX
                 fetch('../includes/get_locations.php?type=upazilas&district_id=' + districtId)
                     .then(response => response.json())
                     .then(data => {

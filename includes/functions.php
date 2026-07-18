@@ -32,27 +32,6 @@ function getProductById($id) {
     return $stmt->fetch(PDO::FETCH_ASSOC);
 }
 
-function getProductImageUrl($image) {
-    $fallback = '../images/uploads/logo/logo.png';
-
-    if (empty($image)) {
-        return $fallback;
-    }
-
-    $base_name = basename($image);
-    $root_upload = __DIR__ . '/../uploads/' . $base_name;
-    if (file_exists($root_upload)) {
-        return '../uploads/' . $base_name;
-    }
-
-    $legacy_upload = __DIR__ . '/../images/uploads/products/' . $base_name;
-    if (file_exists($legacy_upload)) {
-        return '../images/uploads/products/' . $base_name;
-    }
-
-    return $fallback;
-}
-
 function getCategories() {
     global $conn;
     $sql = "SELECT * FROM categories ORDER BY name";
@@ -418,8 +397,8 @@ function getOrderByNumber($order_number) {
    ========================================================================= */
 
 /**
- * A customer can review a product if they have an existing order record for it
- * that is not cancelled, and haven't reviewed it before (one review per product).
+ * A customer can review a product if they have at least one DELIVERED order
+ * containing it, and haven't reviewed it before (one review per product).
  */
 function canReviewProduct($user_id, $product_id) {
     global $conn;
@@ -435,9 +414,7 @@ function canReviewProduct($user_id, $product_id) {
 
     $sql = "SELECT COUNT(*) as cnt FROM order_items oi
             JOIN orders o ON oi.order_id = o.id
-            WHERE o.user_id = :user_id
-              AND oi.product_id = :product_id
-              AND o.status IN ('confirmed', 'processing', 'shipped', 'delivered')";
+            WHERE o.user_id = :user_id AND oi.product_id = :product_id AND o.status = 'delivered'";
     $stmt = $conn->prepare($sql);
     $stmt->bindParam(':user_id', $user_id);
     $stmt->bindParam(':product_id', $product_id);
@@ -448,12 +425,10 @@ function canReviewProduct($user_id, $product_id) {
 function addReview($product_id, $user_id, $rating, $comment) {
     global $conn;
 
-    // Find a non-cancelled order containing this product, to link as verified purchase.
+    // Find a delivered order containing this product, to link as verified purchase
     $sql = "SELECT o.id FROM order_items oi
             JOIN orders o ON oi.order_id = o.id
-            WHERE o.user_id = :user_id
-              AND oi.product_id = :product_id
-              AND o.status IN ('confirmed', 'processing', 'shipped', 'delivered')
+            WHERE o.user_id = :user_id AND oi.product_id = :product_id AND o.status = 'delivered'
             ORDER BY o.order_date DESC LIMIT 1";
     $stmt = $conn->prepare($sql);
     $stmt->bindParam(':user_id', $user_id);
@@ -583,6 +558,38 @@ function getWishlistCount($user_id) {
 }
 
 /* =========================================================================
+   SESSION RECOVERY (for payment gateway redirects)
+   ========================================================================= */
+
+/**
+ * Cross-site redirects from a payment gateway (SSLCommerz posting back to
+ * success/fail/cancel URLs) often arrive without the session cookie, since
+ * browsers restrict cookies on cross-site requests. Rather than depending
+ * on that cookie, we re-hydrate the session directly from the DB using the
+ * user_id already tied to the (independently validated) order. This is safe
+ * because the order lookup itself is keyed off a unique tran_id, and for
+ * the success path the transaction is additionally verified against
+ * SSLCommerz's Validation API before this is ever called.
+ */
+function establishUserSession($user_id) {
+    global $conn;
+    $sql = "SELECT * FROM users WHERE id = :id";
+    $stmt = $conn->prepare($sql);
+    $stmt->bindParam(':id', $user_id);
+    $stmt->execute();
+    $user = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if ($user) {
+        $_SESSION['user_id'] = $user['id'];
+        $_SESSION['name'] = $user['name'];
+        $_SESSION['email'] = $user['email'];
+        $_SESSION['role'] = $user['role'];
+        return true;
+    }
+    return false;
+}
+
+/* =========================================================================
    PAYMENT GATEWAY (simulated)
    ========================================================================= */
 
@@ -680,7 +687,26 @@ function placeOrder($user_id, $division_id, $district_id, $upazila_id, $detailed
         return false;
     }
 }
+function getProductImageUrl($image) {
+    $fallback = '../images/uploads/logo/logo.png';
 
+    if (empty($image)) {
+        return $fallback;
+    }
+
+    $base_name = basename($image);
+    $root_upload = __DIR__ . '/../uploads/' . $base_name;
+    if (file_exists($root_upload)) {
+        return '../uploads/' . $base_name;
+    }
+
+    $legacy_upload = __DIR__ . '/../images/uploads/products/' . $base_name;
+    if (file_exists($legacy_upload)) {
+        return '../images/uploads/products/' . $base_name;
+    }
+
+    return $fallback;
+}
 // Admin functions
 function getLowStockProducts($threshold = 5) {
     global $conn;

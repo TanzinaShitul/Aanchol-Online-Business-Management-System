@@ -20,26 +20,27 @@ $reviews = getProductReviews($product_id);
 $in_wishlist = isLoggedIn() ? isInWishlist($_SESSION['user_id'], $product_id) : false;
 $can_review = isLoggedIn() ? canReviewProduct($_SESSION['user_id'], $product_id) : false;
 
-// Handle add to cart
-if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['add_to_cart'])) {
+// Shared product action handler
+if ($_SERVER['REQUEST_METHOD'] == 'POST' && (isset($_POST['add_to_cart']) || isset($_POST['buy_now']))) {
     if (!isLoggedIn()) {
         $_SESSION['redirect_to'] = "product-details.php?id=$product_id";
         redirect('login.php');
     }
-    
-    $quantity = $_POST['quantity'] ?? 1;
+
+    $quantity = (int)($_POST['quantity'] ?? 1);
+    $quantity = max(1, $quantity);
     $size = isset($_POST['size']) ? trim($_POST['size']) : null;
 
     // Category-specific size rules
     $cat = strtolower($product['category_name'] ?? '');
-    $bangleSizes = ['22','24','26'];
-    $clothingSizes = ['M','L','XL','XXL'];
+    $bangleSizes = ['22', '24', '26'];
+    $clothingSizes = ['M', 'L', 'XL', 'XXL'];
 
     if (in_array($cat, ['bangles'])) {
         if (empty($size) || !in_array($size, $bangleSizes)) {
             $error = "Please select a valid bangle size.";
         }
-    } elseif (in_array($cat, ['dress','panjabi'])) {
+    } elseif (in_array($cat, ['dress', 'panjabi'])) {
         if (empty($size) || !in_array(strtoupper($size), $clothingSizes)) {
             $error = "Please select a valid size (M, L, XL, XXL).";
         } else {
@@ -52,6 +53,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['add_to_cart'])) {
 
     if (!isset($error)) {
         if (addToCart($_SESSION['user_id'], $product_id, $quantity, $size)) {
+            if (isset($_POST['buy_now'])) {
+                redirect('checkout.php');
+            }
             $success = "Product added to cart successfully!";
         } else {
             $error = "Failed to add product to cart!";
@@ -224,11 +228,18 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['submit_review'])) {
                                     <?php endif; ?>
 
                                     <div class="col-md-9 mb-3">
-                                        <button type="submit" 
-                                                name="add_to_cart" 
-                                                class="btn btn-primary btn-lg w-100">
-                                            <i class="fas fa-cart-plus"></i> Add to Cart
-                                        </button>
+                                        <div class="d-grid gap-2 d-md-flex">
+                                            <button type="submit" 
+                                                    name="add_to_cart" 
+                                                    class="btn btn-primary btn-lg flex-fill">
+                                                <i class="fas fa-cart-plus"></i> Add to Cart
+                                            </button>
+                                            <button type="submit" 
+                                                    name="buy_now" 
+                                                    class="btn btn-outline-primary btn-lg flex-fill">
+                                                <i class="fas fa-bolt"></i> Buy Now
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                             </form>

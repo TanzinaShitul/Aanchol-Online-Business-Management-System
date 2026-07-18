@@ -82,7 +82,15 @@ $grand_total = max($cart_total + $shipping_estimate - $coupon_discount, 0);
     <?php include '../includes/header.php'; ?>
     
     <div class="container mt-4 mb-5">
-        <h1 class="mb-4">Shopping Cart</h1>
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
+            <div>
+                <h1 class="mb-1">Shopping Cart</h1>
+                <p class="text-muted mb-0">Review your selected items, update quantities, and continue to checkout.</p>
+            </div>
+            <span class="badge rounded-pill bg-primary px-3 py-2 fs-6">
+                <i class="fas fa-shopping-bag me-1"></i> <?= count($cart_items) ?> item<?= count($cart_items) != 1 ? 's' : '' ?>
+            </span>
+        </div>
 
         <?php if (isset($_SESSION['success'])): ?>
             <div class="alert alert-success alert-dismissible fade show" role="alert">
@@ -104,29 +112,29 @@ $grand_total = max($cart_total + $shipping_estimate - $coupon_discount, 0);
         <div class="row">
             <div class="col-lg-8">
                 <form method="POST" id="cart-form">
-                    <div class="card">
-                        <div class="card-header">
-                            <h5 class="mb-0">Cart Items (<?= count($cart_items) ?>)</h5>
+                    <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+                        <div class="card-header bg-white border-0 py-3">
+                            <h5 class="mb-0">Cart Items</h5>
                         </div>
-                        <div class="card-body">
+                        <div class="card-body p-3 p-md-4">
                             <?php foreach ($cart_items as $item): ?>
-                            <div class="cart-item row align-items-center mb-3 pb-3 border-bottom">
-                                <div class="col-md-2">
+                            <div class="cart-item row align-items-center mb-3 pb-3 border-bottom g-3">
+                                <div class="col-md-2 col-4">
                                     <img src="../uploads/<?= $item['image'] ?: 'default.jpg' ?>" 
-                                         class="img-fluid" 
+                                         class="img-fluid rounded-3 shadow-sm" 
                                          alt="<?= htmlspecialchars($item['name']) ?>"
-                                         style="height: 80px; object-fit: cover;">
+                                         style="height: 90px; width: 100%; object-fit: cover;">
                                 </div>
-                                <div class="col-md-4">
-                                    <h6><?= htmlspecialchars($item['name']) ?></h6>
+                                <div class="col-md-4 col-8">
+                                    <h6 class="mb-1"><?= htmlspecialchars($item['name']) ?></h6>
                                     <?php if (!empty($item['has_discount'])): ?>
-                                        <p class="mb-0">
+                                        <p class="mb-1">
                                             <span class="text-muted text-decoration-line-through small">৳<?= number_format($item['original_price'], 2) ?></span>
                                             <span class="text-danger fw-bold">৳<?= number_format($item['price'], 2) ?></span>
                                             <span class="badge bg-danger">-<?= rtrim(rtrim(number_format($item['discount_percent_applied'], 2), '0'), '.') ?>%</span>
                                         </p>
                                     <?php else: ?>
-                                        <p class="text-muted mb-0">৳<?= number_format($item['price'], 2) ?></p>
+                                        <p class="text-muted mb-1">৳<?= number_format($item['price'], 2) ?></p>
                                     <?php endif; ?>
                                     <?php if (!empty($item['size'])): ?>
                                         <small class="text-muted">Size: <?= htmlspecialchars($item['size']) ?></small><br>
@@ -135,39 +143,38 @@ $grand_total = max($cart_total + $shipping_estimate - $coupon_discount, 0);
                                         <small class="text-danger">Only <?= $item['stock'] ?> available!</small>
                                     <?php endif; ?>
                                 </div>
-                                <div class="col-md-3">
+                                <div class="col-md-3 col-6">
+                                    <label class="form-label small text-muted mb-1">Quantity</label>
                                     <input type="number" 
                                            name="quantities[<?= $item['id'] ?>]" 
-                                           class="form-control" 
+                                           class="form-control rounded-pill" 
                                            value="<?= $item['quantity'] ?>" 
                                            min="1" 
                                            max="<?= $item['stock'] ?>">
                                 </div>
-                                <div class="col-md-2">
-                                    <h6 class="text-primary">৳<?= number_format($item['price'] * $item['quantity'], 2) ?></h6>
+                                <div class="col-md-2 col-4 text-md-end">
+                                    <h6 class="text-primary mb-0">৳<?= number_format($item['price'] * $item['quantity'], 2) ?></h6>
                                 </div>
-                                <div class="col-md-1">
+                                <div class="col-md-1 col-2 text-end">
                                     <a href="?remove=<?= $item['id'] ?>" 
-                                       class="btn btn-sm btn-danger" 
-                                       onclick="return confirm('Remove this item?')">
+                                       class="btn btn-sm btn-outline-danger rounded-circle" 
+                                       onclick="return confirm('Remove this item?')" title="Remove item">
                                         <i class="fas fa-trash"></i>
                                     </a>
                                 </div>
                             </div>
                             <?php endforeach; ?>
                             
-                            <div class="row mt-3">
-                                <div class="col-12">
-                                    <button type="submit" name="update_cart" class="btn btn-outline-primary">
-                                        <i class="fas fa-sync-alt"></i> Update Cart
-                                    </button>
-                                    <a href="products.php" class="btn btn-outline-success">
-                                        <i class="fas fa-shopping-bag"></i> Continue Shopping
-                                    </a>
-                                    <a href="wishlist.php" class="btn btn-outline-danger">
-                                        <i class="fas fa-heart"></i> View Wishlist
-                                    </a>
-                                </div>
+                            <div class="d-flex flex-wrap gap-2 mt-3">
+                                <button type="submit" name="update_cart" class="btn btn-outline-primary rounded-pill px-3">
+                                    <i class="fas fa-sync-alt"></i> Update Cart
+                                </button>
+                                <a href="products.php" class="btn btn-outline-success rounded-pill px-3">
+                                    <i class="fas fa-shopping-bag"></i> Continue Shopping
+                                </a>
+                                <a href="wishlist.php" class="btn btn-outline-danger rounded-pill px-3">
+                                    <i class="fas fa-heart"></i> View Wishlist
+                                </a>
                             </div>
                         </div>
                     </div>
@@ -175,46 +182,46 @@ $grand_total = max($cart_total + $shipping_estimate - $coupon_discount, 0);
             </div>
             
             <div class="col-lg-4">
-                <div class="card">
-                    <div class="card-header">
+                <div class="card border-0 shadow-sm rounded-4 sticky-top" style="top: 20px;">
+                    <div class="card-header bg-white border-0 pt-3 pb-2">
                         <h5 class="mb-0">Order Summary</h5>
                     </div>
-                    <div class="card-body">
-                        <table class="table table-bordered">
-                            <tr>
-                                <td>Subtotal</td>
-                                <td class="text-end">৳<?= number_format($cart_total, 2) ?></td>
-                            </tr>
+                    <div class="card-body p-3 p-md-4">
+                        <div class="bg-light rounded-4 p-3 mb-3">
+                            <div class="d-flex justify-content-between mb-2">
+                                <span class="text-muted">Subtotal</span>
+                                <strong>৳<?= number_format($cart_total, 2) ?></strong>
+                            </div>
                             <?php if ($product_savings > 0): ?>
-                            <tr class="text-danger">
-                                <td>Product Discounts</td>
-                                <td class="text-end">already applied &minus;৳<?= number_format($product_savings, 2) ?></td>
-                            </tr>
+                            <div class="d-flex justify-content-between mb-2 text-danger">
+                                <span>Discount savings</span>
+                                <strong>-৳<?= number_format($product_savings, 2) ?></strong>
+                            </div>
                             <?php endif; ?>
                             <?php if ($applied_coupon): ?>
-                            <tr class="text-success">
-                                <td>Coupon (<?= htmlspecialchars($applied_coupon['code']) ?>)</td>
-                                <td class="text-end">&minus;৳<?= number_format($coupon_discount, 2) ?></td>
-                            </tr>
+                            <div class="d-flex justify-content-between mb-2 text-success">
+                                <span>Coupon <?= htmlspecialchars($applied_coupon['code']) ?></span>
+                                <strong>-৳<?= number_format($coupon_discount, 2) ?></strong>
+                            </div>
                             <?php endif; ?>
-                            <tr>
-                                <td>Shipping (estimated)</td>
-                                <td class="text-end">৳<?= number_format($shipping_estimate, 2) ?></td>
-                            </tr>
-                            <tr class="fw-bold">
-                                <td>Total</td>
-                                <td class="text-end text-primary">৳<?= number_format($grand_total, 2) ?></td>
-                            </tr>
-                        </table>
+                            <div class="d-flex justify-content-between mb-2">
+                                <span class="text-muted">Shipping</span>
+                                <strong>৳<?= number_format($shipping_estimate, 2) ?></strong>
+                            </div>
+                            <hr>
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="fw-bold">Total</span>
+                                <span class="text-primary fw-bold fs-5">৳<?= number_format($grand_total, 2) ?></span>
+                            </div>
+                        </div>
 
-                        <!-- Coupon -->
                         <div class="mb-3">
                             <label class="form-label">Have a coupon code?</label>
                             <form method="POST" action="apply-coupon.php" class="d-flex gap-2">
-                                <input type="text" name="coupon_code" class="form-control text-uppercase"
+                                <input type="text" name="coupon_code" class="form-control text-uppercase rounded-pill"
                                        placeholder="e.g. WELCOME10"
                                        value="<?= htmlspecialchars($_SESSION['coupon_code'] ?? '') ?>">
-                                <button type="submit" class="btn btn-outline-primary flex-shrink-0">Apply</button>
+                                <button type="submit" class="btn btn-outline-primary rounded-pill flex-shrink-0">Apply</button>
                             </form>
                             <?php if ($applied_coupon): ?>
                                 <div class="mt-2 d-flex justify-content-between align-items-center">
@@ -229,14 +236,14 @@ $grand_total = max($cart_total + $shipping_estimate - $coupon_discount, 0);
                         </div>
                         
                         <div class="d-grid gap-2">
-                            <a href="checkout.php" class="btn btn-primary btn-lg">
+                            <a href="checkout.php" class="btn btn-primary btn-lg rounded-pill">
                                 <i class="fas fa-shopping-cart"></i> Proceed to Checkout
                             </a>
                         </div>
                         
-                        <div class="mt-4">
-                            <h6>Delivery Information:</h6>
-                            <ul class="small">
+                        <div class="mt-4 small text-muted">
+                            <div class="fw-semibold text-dark mb-2">Delivery Information</div>
+                            <ul class="mb-0 ps-3">
                                 <li>Cash on Delivery, bKash, Nagad, Rocket & Card available</li>
                                 <li>Delivery within 3-5 business days</li>
                             </ul>

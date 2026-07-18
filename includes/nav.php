@@ -12,6 +12,8 @@ $navLogoutHref = $navBasePath ? 'logout.php' : 'customer/logout.php';
 $navLogoSrc = $navBasePath ? '../images/uploads/logo/logo.png' : 'images/uploads/logo/logo.png';
 
 $categoryItems = function_exists('getCategories') ? getCategories() : [];
+$cartCount = function_exists('isLoggedIn') && isLoggedIn() && function_exists('getCartItems') ? count(getCartItems($_SESSION['user_id'])) : 0;
+$wishlistCount = function_exists('isLoggedIn') && isLoggedIn() && function_exists('getWishlistCount') ? getWishlistCount($_SESSION['user_id']) : 0;
 ?>
 <nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm">
     <div class="container">
@@ -50,9 +52,15 @@ $categoryItems = function_exists('getCategories') ? getCategories() : [];
                 <?php if (function_exists('isLoggedIn') && isLoggedIn()): ?>
                     <a href="<?= htmlspecialchars($navWishlistHref) ?>" class="btn btn-outline-danger me-2 position-relative">
                         <i class="fas fa-heart"></i> Wishlist
+                        <?php if ($wishlistCount > 0): ?>
+                            <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger"><?= (int) $wishlistCount ?></span>
+                        <?php endif; ?>
                     </a>
                     <a href="<?= htmlspecialchars($navCartHref) ?>" class="btn btn-outline-primary me-2 position-relative">
                         <i class="fas fa-shopping-cart"></i> Cart
+                        <?php if ($cartCount > 0): ?>
+                            <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger"><?= (int) $cartCount ?></span>
+                        <?php endif; ?>
                     </a>
                     <div class="dropdown">
                         <button class="btn btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
