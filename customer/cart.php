@@ -34,6 +34,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['update_cart'])) {
 
 $cart_items = getCartItems($_SESSION['user_id']);
 $cart_total = getCartTotal($_SESSION['user_id']);
+$available_coupons = getAvailableCouponsForUser($_SESSION['user_id'], $cart_total);
 
 // Total product-discount savings (original price vs effective price)
 $product_savings = 0;
@@ -216,13 +217,45 @@ $grand_total = max($cart_total + $shipping_estimate - $coupon_discount, 0);
                         </div>
 
                         <div class="mb-3">
-                            <label class="form-label">Have a coupon code?</label>
+                            <div class="small text-muted mb-2">
+                                <i class="fas fa-tags"></i> All coupons (one at a time)
+                            </div>
+                            <?php if (!empty($available_coupons)): ?>
+                                <div class="overflow-auto mb-3">
+                                    <div class="d-flex flex-nowrap gap-2 pb-1" style="min-width: max-content;">
+                                        <?php foreach ($available_coupons as $coupon): ?>
+                                            <button type="button"
+                                                    class="btn btn-sm rounded-pill border <?= $coupon['is_applicable'] ? 'border-primary text-primary coupon-chip' : 'border-secondary text-secondary opacity-75' ?>"
+                                                    data-code="<?= htmlspecialchars($coupon['code']) ?>"
+                                                    title="<?= htmlspecialchars($coupon['is_applicable'] ? 'Apply ' . $coupon['code'] : $coupon['reason']) ?>"
+                                                    <?= $coupon['is_applicable'] ? '' : 'disabled' ?>
+                                                    style="white-space: nowrap;">
+                                                <span class="fw-semibold me-1"><?= htmlspecialchars($coupon['code']) ?></span>
+                                                <small>
+                                                    <?php
+                                                    $coupon_label = $coupon['discount_type'] === 'percentage'
+                                                        ? '-' . rtrim(rtrim(number_format($coupon['discount_value'], 2), '0'), '.') . '%'
+                                                        : '৳' . number_format($coupon['discount_value'], 2);
+                                                    echo htmlspecialchars($coupon_label);
+                                                    ?>
+                                                </small>
+                                                <span class="ms-2 small text-muted">Min <?= number_format((float)$coupon['min_order_amount'], 2) ?>৳</span>
+                                            </button>
+                                        <?php endforeach; ?>
+                                    </div>
+                                </div>
+                            <?php else: ?>
+                                <div class="alert alert-light border small mb-3">No coupons are available in the system.</div>
+                            <?php endif; ?>
+
+                            <label class="form-label">Coupon code</label>
                             <form method="POST" action="apply-coupon.php" class="d-flex gap-2">
                                 <input type="text" name="coupon_code" class="form-control text-uppercase rounded-pill"
                                        placeholder="e.g. WELCOME10"
                                        value="<?= htmlspecialchars($_SESSION['coupon_code'] ?? '') ?>">
                                 <button type="submit" class="btn btn-outline-primary rounded-pill flex-shrink-0">Apply</button>
                             </form>
+                            <div class="small text-muted mt-2">Only one coupon can be used per order.</div>
                             <?php if ($applied_coupon): ?>
                                 <div class="mt-2 d-flex justify-content-between align-items-center">
                                     <span class="badge bg-success">
@@ -267,5 +300,16 @@ $grand_total = max($cart_total + $shipping_estimate - $coupon_discount, 0);
     <?php include '../includes/footer.php'; ?>
     
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.querySelectorAll('.coupon-chip').forEach(function (button) {
+            button.addEventListener('click', function () {
+                const input = document.querySelector('input[name="coupon_code"]');
+                if (input) {
+                    input.value = this.dataset.code;
+                    input.focus();
+                }
+            });
+        });
+    </script>
 </body>
 </html>

@@ -279,6 +279,53 @@ function getAllCoupons() {
     return $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
 
+function getAvailableCouponsForUser($user_id, $cart_total) {
+    global $conn;
+
+    $today = date('Y-m-d');
+    $all_coupons = getAllCoupons();
+    $result = [];
+
+    foreach ($all_coupons as $coupon) {
+        $coupon['is_applicable'] = true;
+        $coupon['reason'] = null;
+
+        if ($coupon['status'] !== 'active') {
+            $coupon['is_applicable'] = false;
+            $coupon['reason'] = 'Inactive coupon';
+        } elseif (!empty($coupon['starts_at']) && $coupon['starts_at'] > $today) {
+            $coupon['is_applicable'] = false;
+            $coupon['reason'] = 'Starts on ' . date('d M Y', strtotime($coupon['starts_at']));
+        } elseif (!empty($coupon['expires_at']) && $coupon['expires_at'] < $today) {
+            $coupon['is_applicable'] = false;
+            $coupon['reason'] = 'Expired on ' . date('d M Y', strtotime($coupon['expires_at']));
+        } elseif ($coupon['usage_limit'] !== null && (int)$coupon['used_count'] >= (int)$coupon['usage_limit']) {
+            $coupon['is_applicable'] = false;
+            $coupon['reason'] = 'Usage limit reached';
+        } elseif ((float)$cart_total < (float)$coupon['min_order_amount']) {
+            $coupon['is_applicable'] = false;
+            $coupon['reason'] = 'Minimum order ৳' . number_format($coupon['min_order_amount'], 2);
+        }
+
+        if ($coupon['is_applicable']) {
+            $sql = "SELECT COUNT(*) as cnt FROM coupon_usage WHERE coupon_id = :coupon_id AND user_id = :user_id";
+            $stmt = $conn->prepare($sql);
+            $stmt->bindParam(':coupon_id', $coupon['id']);
+            $stmt->bindParam(':user_id', $user_id);
+            $stmt->execute();
+
+            if ($stmt->fetch(PDO::FETCH_ASSOC)['cnt'] > 0) {
+                $coupon['is_applicable'] = false;
+                $coupon['reason'] = 'Already used by you';
+            }
+        }
+
+        $result[] = $coupon;
+    }
+
+    return $result;
+}
+
 function getCouponById($id) {
     global $conn;
     $sql = "SELECT * FROM coupons WHERE id = :id";
