@@ -34,6 +34,38 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['update_cart'])) {
 
 $cart_items = getCartItems($_SESSION['user_id']);
 $cart_total = getCartTotal($_SESSION['user_id']);
+
+// Total product-discount savings (original price vs effective price)
+$product_savings = 0;
+foreach ($cart_items as $item) {
+    if (!empty($item['has_discount'])) {
+        $product_savings += ($item['original_price'] - $item['price']) * $item['quantity'];
+    }
+}
+
+// Shipping estimate based on the customer's saved division
+$sql = "SELECT division_id FROM users WHERE id = :id";
+$stmt = $conn->prepare($sql);
+$stmt->bindParam(':id', $_SESSION['user_id']);
+$stmt->execute();
+$current_user = $stmt->fetch(PDO::FETCH_ASSOC);
+$shipping_estimate = getShippingCost($current_user['division_id'] ?? null);
+
+// Re-validate any applied coupon against the current cart total
+$applied_coupon = null;
+$coupon_discount = 0;
+if (!empty($_SESSION['coupon_code'])) {
+    $validation = validateCoupon($_SESSION['coupon_code'], $_SESSION['user_id'], $cart_total);
+    if ($validation['valid']) {
+        $applied_coupon = $validation['coupon'];
+        $coupon_discount = $validation['discount_amount'];
+    } else {
+        unset($_SESSION['coupon_code']);
+        $_SESSION['error'] = $validation['message'];
+    }
+}
+
+$grand_total = max($cart_total + $shipping_estimate - $coupon_discount, 0);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -51,11 +83,27 @@ $cart_total = getCartTotal($_SESSION['user_id']);
     
     <div class="container mt-4 mb-5">
         <h1 class="mb-4">Shopping Cart</h1>
+
+        <?php if (isset($_SESSION['success'])): ?>
+            <div class="alert alert-success alert-dismissible fade show" role="alert">
+                <?= htmlspecialchars($_SESSION['success']) ?>
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+            <?php unset($_SESSION['success']); ?>
+        <?php endif; ?>
+
+        <?php if (isset($_SESSION['error'])): ?>
+            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                <?= htmlspecialchars($_SESSION['error']) ?>
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+            <?php unset($_SESSION['error']); ?>
+        <?php endif; ?>
         
         <?php if (count($cart_items) > 0): ?>
-        <form method="POST">
-            <div class="row">
-                <div class="col-lg-8">
+        <div class="row">
+            <div class="col-lg-8">
+                <form method="POST" id="cart-form">
                     <div class="card">
                         <div class="card-header">
                             <h5 class="mb-0">Cart Items (<?= count($cart_items) ?>)</h5>
@@ -71,7 +119,15 @@ $cart_total = getCartTotal($_SESSION['user_id']);
                                 </div>
                                 <div class="col-md-4">
                                     <h6><?= htmlspecialchars($item['name']) ?></h6>
-                                    <p class="text-muted mb-0">৳<?= number_format($item['price'], 2) ?></p>
+                                    <?php if (!empty($item['has_discount'])): ?>
+                                        <p class="mb-0">
+                                            <span class="text-muted text-decoration-line-through small">৳<?= number_format($item['original_price'], 2) ?></span>
+                                            <span class="text-danger fw-bold">৳<?= number_format($item['price'], 2) ?></span>
+                                            <span class="badge bg-danger">-<?= rtrim(rtrim(number_format($item['discount_percent_applied'], 2), '0'), '.') ?>%</span>
+                                        </p>
+                                    <?php else: ?>
+                                        <p class="text-muted mb-0">৳<?= number_format($item['price'], 2) ?></p>
+                                    <?php endif; ?>
                                     <?php if (!empty($item['size'])): ?>
                                         <small class="text-muted">Size: <?= htmlspecialchars($item['size']) ?></small><br>
                                     <?php endif; ?>
@@ -108,51 +164,87 @@ $cart_total = getCartTotal($_SESSION['user_id']);
                                     <a href="products.php" class="btn btn-outline-success">
                                         <i class="fas fa-shopping-bag"></i> Continue Shopping
                                     </a>
+                                    <a href="wishlist.php" class="btn btn-outline-danger">
+                                        <i class="fas fa-heart"></i> View Wishlist
+                                    </a>
                                 </div>
                             </div>
                         </div>
                     </div>
-                </div>
-                
-                <div class="col-lg-4">
-                    <div class="card">
-                        <div class="card-header">
-                            <h5 class="mb-0">Order Summary</h5>
+                </form>
+            </div>
+            
+            <div class="col-lg-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">Order Summary</h5>
+                    </div>
+                    <div class="card-body">
+                        <table class="table table-bordered">
+                            <tr>
+                                <td>Subtotal</td>
+                                <td class="text-end">৳<?= number_format($cart_total, 2) ?></td>
+                            </tr>
+                            <?php if ($product_savings > 0): ?>
+                            <tr class="text-danger">
+                                <td>Product Discounts</td>
+                                <td class="text-end">already applied &minus;৳<?= number_format($product_savings, 2) ?></td>
+                            </tr>
+                            <?php endif; ?>
+                            <?php if ($applied_coupon): ?>
+                            <tr class="text-success">
+                                <td>Coupon (<?= htmlspecialchars($applied_coupon['code']) ?>)</td>
+                                <td class="text-end">&minus;৳<?= number_format($coupon_discount, 2) ?></td>
+                            </tr>
+                            <?php endif; ?>
+                            <tr>
+                                <td>Shipping (estimated)</td>
+                                <td class="text-end">৳<?= number_format($shipping_estimate, 2) ?></td>
+                            </tr>
+                            <tr class="fw-bold">
+                                <td>Total</td>
+                                <td class="text-end text-primary">৳<?= number_format($grand_total, 2) ?></td>
+                            </tr>
+                        </table>
+
+                        <!-- Coupon -->
+                        <div class="mb-3">
+                            <label class="form-label">Have a coupon code?</label>
+                            <form method="POST" action="apply-coupon.php" class="d-flex gap-2">
+                                <input type="text" name="coupon_code" class="form-control text-uppercase"
+                                       placeholder="e.g. WELCOME10"
+                                       value="<?= htmlspecialchars($_SESSION['coupon_code'] ?? '') ?>">
+                                <button type="submit" class="btn btn-outline-primary flex-shrink-0">Apply</button>
+                            </form>
+                            <?php if ($applied_coupon): ?>
+                                <div class="mt-2 d-flex justify-content-between align-items-center">
+                                    <span class="badge bg-success">
+                                        <i class="fas fa-check-circle"></i> <?= htmlspecialchars($applied_coupon['code']) ?> applied
+                                    </span>
+                                    <a href="remove-coupon.php" class="small text-danger text-decoration-none">
+                                        <i class="fas fa-times"></i> Remove
+                                    </a>
+                                </div>
+                            <?php endif; ?>
                         </div>
-                        <div class="card-body">
-                            <table class="table table-bordered">
-                                <tr>
-                                    <td>Subtotal</td>
-                                    <td class="text-end">৳<?= number_format($cart_total, 2) ?></td>
-                                </tr>
-                                <tr>
-                                    <td>Shipping</td>
-                                    <td class="text-end">৳50.00</td>
-                                </tr>
-                                <tr class="fw-bold">
-                                    <td>Total</td>
-                                    <td class="text-end text-primary">৳<?= number_format($cart_total + 50, 2) ?></td>
-                                </tr>
-                            </table>
-                            
-                            <div class="d-grid gap-2">
-                                <a href="checkout.php" class="btn btn-primary btn-lg">
-                                    <i class="fas fa-shopping-cart"></i> Proceed to Checkout
-                                </a>
-                            </div>
-                            
-                            <div class="mt-4">
-                                <h6>Delivery Information:</h6>
-                                <ul class="small">
-                                    <li>Cash on Delivery available</li>
-                                    <li>Delivery within 3-5 business days</li>
-                                </ul>
-                            </div>
+                        
+                        <div class="d-grid gap-2">
+                            <a href="checkout.php" class="btn btn-primary btn-lg">
+                                <i class="fas fa-shopping-cart"></i> Proceed to Checkout
+                            </a>
+                        </div>
+                        
+                        <div class="mt-4">
+                            <h6>Delivery Information:</h6>
+                            <ul class="small">
+                                <li>Cash on Delivery, bKash, Nagad, Rocket & Card available</li>
+                                <li>Delivery within 3-5 business days</li>
+                            </ul>
                         </div>
                     </div>
                 </div>
             </div>
-        </form>
+        </div>
         <?php else: ?>
         <div class="text-center py-5">
             <div class="display-1 text-muted">

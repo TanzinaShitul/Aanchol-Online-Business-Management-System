@@ -19,6 +19,22 @@ $stmt->bindParam(':id', $_SESSION['user_id']);
 $stmt->execute();
 $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
+$cart_total = getCartTotal($_SESSION['user_id']);
+
+// Re-validate any applied coupon against the current cart total
+$applied_coupon = null;
+$coupon_discount = 0;
+if (!empty($_SESSION['coupon_code'])) {
+    $validation = validateCoupon($_SESSION['coupon_code'], $_SESSION['user_id'], $cart_total);
+    if ($validation['valid']) {
+        $applied_coupon = $validation['coupon'];
+        $coupon_discount = $validation['discount_amount'];
+    } else {
+        unset($_SESSION['coupon_code']);
+        $_SESSION['error'] = $validation['message'];
+    }
+}
+
 // Handle checkout
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $division_id = $_POST['division'];
@@ -27,6 +43,16 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $detailed_address = $_POST['detailed_address'];
     $phone = $_POST['phone'];
     $notes = $_POST['notes'] ?? '';
+
+    $payment_map = [
+        'cod'    => 'Cash on Delivery',
+        'bkash'  => 'bKash',
+        'nagad'  => 'Nagad',
+        'rocket' => 'Rocket',
+        'card'   => 'Card',
+    ];
+    $payment_choice = $_POST['payment_method'] ?? 'cod';
+    $payment_method = $payment_map[$payment_choice] ?? 'Cash on Delivery';
     
     // Get location names to include in address
     $sql = "SELECT name_en FROM divisions WHERE id = :id";
@@ -52,9 +78,24 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     
     // Build complete address with division, district, upazila
     $complete_address = $detailed_address . "\n" . $upazila_name . ", " . $district_name . ", " . $division_name;
+
+    // Re-validate coupon one last time right before placing the order
+    $coupon_id = null;
+    $coupon_code = null;
+    $discount_amount = 0;
+    if (!empty($_SESSION['coupon_code'])) {
+        $final_check = validateCoupon($_SESSION['coupon_code'], $_SESSION['user_id'], getCartTotal($_SESSION['user_id']));
+        if ($final_check['valid']) {
+            $coupon_id = $final_check['coupon']['id'];
+            $coupon_code = $final_check['coupon']['code'];
+            $discount_amount = $final_check['discount_amount'];
+        } else {
+            unset($_SESSION['coupon_code']);
+        }
+    }
     
     // Place order
-    $order_id = placeOrder($_SESSION['user_id'], $division_id, $district_id, $upazila_id, $complete_address, $phone);
+    $order_id = placeOrder($_SESSION['user_id'], $division_id, $district_id, $upazila_id, $complete_address, $phone, $coupon_id, $coupon_code, $discount_amount, $payment_method);
     
     if ($order_id) {
         // Get order number for confirmation
@@ -64,8 +105,16 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $stmt->execute();
         $order = $stmt->fetch(PDO::FETCH_ASSOC);
         
-        $_SESSION['order_success'] = $order['order_number'];
-        redirect('order-success.php');
+        unset($_SESSION['coupon_code']);
+
+        if ($payment_choice === 'cod') {
+            $_SESSION['order_success'] = $order['order_number'];
+            redirect('order-success.php');
+        } elseif ($payment_choice === 'card') {
+            redirect('sslcommerz-initiate.php?order=' . urlencode($order['order_number']));
+        } else {
+            redirect('sslcommerz-initiate.php?order=' . urlencode($order['order_number']));
+        }
     } else {
         $error = "Failed to place order. Please try again!";
     }
@@ -181,15 +230,43 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                                     <h6 class="mb-0">Payment Method</h6>
                                 </div>
                                 <div class="card-body">
-                                    <div class="form-check">
+                                    <div class="form-check mb-2">
                                         <input class="form-check-input" type="radio" name="payment_method" id="cod" value="cod" checked>
                                         <label class="form-check-label" for="cod">
                                             <strong>Cash on Delivery (COD)</strong><br>
                                             <small class="text-muted">Pay when you receive the order</small>
                                         </label>
                                     </div>
-                                    <div class="alert alert-info mt-3">
-                                        <i class="fas fa-info-circle"></i> Online payment options coming soon!
+                                    <div class="form-check mb-2">
+                                        <input class="form-check-input" type="radio" name="payment_method" id="bkash" value="bkash">
+                                        <label class="form-check-label" for="bkash">
+                                            <strong style="color:#E2136E;">bKash</strong>
+                                            <small class="text-muted d-block">Pay via bKash (sandbox)</small>
+                                        </label>
+                                    </div>
+                                    <div class="form-check mb-2">
+                                        <input class="form-check-input" type="radio" name="payment_method" id="nagad" value="nagad">
+                                        <label class="form-check-label" for="nagad">
+                                            <strong style="color:#EC1D25;">Nagad</strong>
+                                            <small class="text-muted d-block">Pay via Nagad (sandbox)</small>
+                                        </label>
+                                    </div>
+                                    <div class="form-check mb-2">
+                                        <input class="form-check-input" type="radio" name="payment_method" id="rocket" value="rocket">
+                                        <label class="form-check-label" for="rocket">
+                                            <strong style="color:#8C3494;">Rocket</strong>
+                                            <small class="text-muted d-block">Pay via Rocket (sandbox)</small>
+                                        </label>
+                                    </div>
+                                    <div class="form-check mb-2">
+                                        <input class="form-check-input" type="radio" name="payment_method" id="card" value="card">
+                                        <label class="form-check-label" for="card">
+                                            <strong>Credit / Debit Card</strong>
+                                            <small class="text-muted d-block">Pay via card (sandbox)</small>
+                                        </label>
+                                    </div>
+                                    <div class="alert alert-warning mt-3 mb-0 small">
+                                        <i class="fas fa-flask"></i> Online payment options are running in <strong>sandbox/test mode</strong> — no real transactions occur.
                                     </div>
                                 </div>
                             </div>
@@ -220,6 +297,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                             <div class="d-flex justify-content-between mb-2">
                                 <div>
                                     <span><?= htmlspecialchars($item['name']) ?> × <?= $item['quantity'] ?></span>
+                                    <?php if (!empty($item['has_discount'])): ?>
+                                        <span class="badge bg-danger ms-1">-<?= rtrim(rtrim(number_format($item['discount_percent_applied'], 2), '0'), '.') ?>%</span>
+                                    <?php endif; ?>
                                 </div>
                                 <div>৳<?= number_format($item_total, 2) ?></div>
                             </div>
@@ -228,8 +308,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                             <hr>
                             <div class="d-flex justify-content-between mb-2">
                                 <div>Subtotal</div>
-                                <div>৳<?= number_format($subtotal, 2) ?></div>
+                                <div id="subtotal-amount">৳<?= number_format($subtotal, 2) ?></div>
                             </div>
+                            <?php if ($applied_coupon): ?>
+                            <div class="d-flex justify-content-between mb-2 text-success">
+                                <div>Coupon (<?= htmlspecialchars($applied_coupon['code']) ?>)</div>
+                                <div>&minus;৳<?= number_format($coupon_discount, 2) ?></div>
+                            </div>
+                            <?php endif; ?>
                             <div class="d-flex justify-content-between mb-2">
                                 <div>Shipping</div>
                                 <div id="shipping-cost">৳80.00</div>
@@ -237,9 +323,19 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                             <hr>
                             <div class="d-flex justify-content-between fw-bold">
                                 <div>Total</div>
-                                <div class="text-primary" id="total-cost">৳<?= number_format($subtotal + 80, 2) ?></div>
+                                <div class="text-primary" id="total-cost">৳<?= number_format(max($subtotal + 80 - $coupon_discount, 0), 2) ?></div>
                             </div>
                         </div>
+
+                        <?php if ($applied_coupon): ?>
+                        <div class="alert alert-success mt-3 py-2 px-3 mb-0 small">
+                            <i class="fas fa-tag"></i> Coupon <strong><?= htmlspecialchars($applied_coupon['code']) ?></strong> will be applied to this order.
+                        </div>
+                        <?php else: ?>
+                        <div class="mt-3 small">
+                            <a href="cart.php">Have a coupon code? Apply it from your cart.</a>
+                        </div>
+                        <?php endif; ?>
                         
                         <div class="mt-4">
                             <h6>Order Review:</h6>
@@ -262,6 +358,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         const subtotal = <?= $subtotal ?>;
+        const couponDiscount = <?= $coupon_discount ?>;
         
         // Calculate and update shipping and total based on division
         function updateShippingCost(divisionId) {
@@ -274,7 +371,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 shipping = 130; // Outside Dhaka
             }
             
-            const total = subtotal + shipping;
+            const total = Math.max(subtotal + shipping - couponDiscount, 0);
             document.getElementById('shipping-cost').textContent = '৳' + shipping.toFixed(2);
             document.getElementById('total-cost').textContent = '৳' + total.toFixed(2);
         }

@@ -1,24 +1,85 @@
-/* Password visibility toggle styles */
-.password-input-group {
-    position: relative;
+/* Login / Admin login page — works alongside css/style.css design tokens */
+
+body {
+  background: linear-gradient(135deg, #12233f 0%, #7c1f46 100%) !important;
+  font-family: "Segoe UI", Arial, sans-serif;
+}
+
+.login-shell {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 0;
+}
+
+.login-card {
+  background: rgba(255, 255, 255, 0.98);
+  border-radius: 24px;
+  box-shadow: 0 20px 60px rgba(9, 17, 34, 0.35);
+  backdrop-filter: blur(5px);
+}
+
+.brand-badge {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(135deg, #1e3a5f, #8e2c4c);
+  color: #fff;
+  font-size: 1.8rem;
+  box-shadow: 0 10px 25px rgba(30, 58, 95, 0.25);
+}
+
+.login-card h2 {
+  color: #1e3a5f;
+  font-weight: 700;
+}
+
+.form-control {
+  border-radius: 12px;
+}
+
+.form-control:focus {
+  border-color: #1e3a5f;
+  box-shadow: 0 0 0 0.2rem rgba(30, 58, 95, 0.18);
+}
+
+.password-input-group,
+.form-control-wrapper {
+  position: relative;
 }
 
 .password-toggle {
-    position: absolute;
-    right: 10px;
-    top: 50%;
-    transform: translateY(-50%);
-    cursor: pointer;
-    color: #666;
-    border: none;
-    background: none;
-    padding: 5px;
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  cursor: pointer;
+  color: #6c757d;
+  border: none;
+  background: transparent;
+  padding: 6px;
+  z-index: 3;
 }
 
 .password-toggle:hover {
-    color: #333;
+  color: #1e3a5f;
 }
 
-.form-control-wrapper {
-    position: relative;
+.btn-primary {
+  border-radius: 12px;
+  padding-block: 0.8rem;
+  font-weight: 600;
+}
+
+@media (max-width: 575.98px) {
+  .login-card {
+    border-radius: 18px;
+  }
+
+  .card-body {
+    padding: 1.25rem !important;
+  }
 }

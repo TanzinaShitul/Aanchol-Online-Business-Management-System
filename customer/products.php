@@ -32,6 +32,13 @@ $stmt->execute();
 $products = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 $categories = getCategories();
+
+$wishlist_ids = [];
+if (isLoggedIn()) {
+    foreach (getWishlistItems($_SESSION['user_id']) as $w) {
+        $wishlist_ids[] = $w['id'];
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -74,22 +81,58 @@ $categories = getCategories();
         <div class="row">
             <?php if (count($products) > 0): ?>
                 <?php foreach ($products as $product): ?>
+                <?php
+                    $pricing = getEffectivePrice($product);
+                    $rating = getProductRatingSummary($product['id']);
+                    $in_wishlist = in_array($product['id'], $wishlist_ids);
+                ?>
                 <div class="col-lg-3 col-md-4 col-sm-6 mb-4">
-                    <div class="card product-card h-100">
-                        <img src="../uploads/<?= $product['image'] ?: 'default.jpg' ?>" 
+                    <div class="card product-card h-100 position-relative">
+                        <?php if (isLoggedIn()): ?>
+                        <form method="POST" action="toggle-wishlist.php" class="position-absolute" style="top:10px; right:10px; z-index:2;">
+                            <input type="hidden" name="product_id" value="<?= $product['id'] ?>">
+                            <input type="hidden" name="redirect" value="products.php<?= $category_id ? '?category=' . $category_id : '' ?>">
+                            <button type="submit" class="btn btn-sm btn-light rounded-circle shadow-sm" title="<?= $in_wishlist ? 'Remove from wishlist' : 'Add to wishlist' ?>">
+                                <i class="<?= $in_wishlist ? 'fas' : 'far' ?> fa-heart" style="color: var(--color-pink, #B23A62);"></i>
+                            </button>
+                        </form>
+                        <?php endif; ?>
+
+                        <?php if ($pricing['has_discount']): ?>
+                            <span class="badge bg-danger position-absolute" style="top:10px; left:10px; z-index:2;">
+                                -<?= rtrim(rtrim(number_format($pricing['percent'], 2), '0'), '.') ?>%
+                            </span>
+                        <?php endif; ?>
+
+                        <img src="<?= htmlspecialchars(getProductImageUrl($product['image'] ?? null)) ?>" 
                              class="card-img-top" 
                              alt="<?= htmlspecialchars($product['name']) ?>"
                              style="height: 200px; object-fit: cover;">
                         <div class="card-body">
                             <span class="badge bg-secondary mb-2"><?= $product['category_name'] ?></span>
                             <h5 class="card-title"><?= htmlspecialchars($product['name']) ?></h5>
+
+                            <?php if ($rating['count'] > 0): ?>
+                                <div class="mb-1 small">
+                                    <?php for ($i = 1; $i <= 5; $i++): ?>
+                                        <i class="<?= $i <= round($rating['average']) ? 'fas' : 'far' ?> fa-star text-warning"></i>
+                                    <?php endfor; ?>
+                                    <span class="text-muted">(<?= $rating['count'] ?>)</span>
+                                </div>
+                            <?php endif; ?>
+
                             <p class="card-text text-muted small">
                                 <?= substr($product['description'], 0, 80) ?>
                                 <?= strlen($product['description']) > 80 ? '...' : '' ?>
                             </p>
                             <div class="d-flex justify-content-between align-items-center">
                                 <div>
-                                    <span class="h5 text-primary">৳<?= number_format($product['price'], 2) ?></span>
+                                    <?php if ($pricing['has_discount']): ?>
+                                        <span class="text-muted text-decoration-line-through small d-block">৳<?= number_format($pricing['original_price'], 2) ?></span>
+                                        <span class="h5 text-primary">৳<?= number_format($pricing['final_price'], 2) ?></span>
+                                    <?php else: ?>
+                                        <span class="h5 text-primary">৳<?= number_format($pricing['final_price'], 2) ?></span>
+                                    <?php endif; ?>
                                     <?php if ($product['stock'] < 5): ?>
                                         <small class="text-danger d-block">Only <?= $product['stock'] ?> left!</small>
                                     <?php endif; ?>

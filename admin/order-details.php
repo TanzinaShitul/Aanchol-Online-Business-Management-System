@@ -36,22 +36,31 @@ $stmt->bindParam(':order_id', $order_id);
 $stmt->execute();
 $order_items = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-// Handle status update
+// Handle status + tracking update
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['update_status'])) {
     $status = $_POST['status'];
-    
-    $sql = "UPDATE orders SET status = :status WHERE id = :id";
+    $courier_name = trim($_POST['courier_name'] ?? '');
+    $tracking_number = trim($_POST['tracking_number'] ?? '');
+    $location = trim($_POST['location'] ?? '');
+    $note = trim($_POST['note'] ?? '');
+
+    $sql = "UPDATE orders SET status = :status, courier_name = :courier_name, tracking_number = :tracking_number WHERE id = :id";
     $stmt = $conn->prepare($sql);
     $stmt->bindParam(':status', $status);
+    $stmt->bindParam(':courier_name', $courier_name);
+    $stmt->bindParam(':tracking_number', $tracking_number);
     $stmt->bindParam(':id', $order_id);
     
     if ($stmt->execute()) {
+        addTrackingEvent($order_id, $status, $location ?: null, $note ?: null);
         $_SESSION['success'] = "Order status updated successfully!";
         redirect("order-details.php?id=$order_id");
     } else {
         $error = "Failed to update order status!";
     }
 }
+
+$tracking_events = getTrackingEvents($order_id);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -89,7 +98,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['update_status'])) {
                     <div class="alert alert-danger"><?= $error ?></div>
                 <?php endif; ?>
                 
-                <div class="card">
+                <div class="card mb-4">
                     <div class="card-header bg-primary text-white">
                         <h4 class="mb-0">Order #<?= $order['order_number'] ?></h4>
                     </div>
@@ -108,25 +117,27 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['update_status'])) {
                                     </tr>
                                     <tr>
                                         <th>Payment Method:</th>
-                                        <td><?= $order['payment_method'] ?></td>
+                                        <td><?= htmlspecialchars($order['payment_method']) ?></td>
                                     </tr>
                                     <tr>
-                                        <th>Status:</th>
+                                        <th>Payment Status:</th>
                                         <td>
-                                            <form method="POST" class="d-inline-flex">
-                                                <input type="hidden" name="order_id" value="<?= $order['id'] ?>">
-                                                <select class="form-select form-select-sm me-2" name="status" onchange="this.form.submit()">
-                                                    <option value="pending" <?= ($order['status'] == 'pending') ? 'selected' : '' ?>>Pending</option>
-                                                    <option value="confirmed" <?= ($order['status'] == 'confirmed') ? 'selected' : '' ?>>Confirmed</option>
-                                                    <option value="processing" <?= ($order['status'] == 'processing') ? 'selected' : '' ?>>Processing</option>
-                                                    <option value="shipped" <?= ($order['status'] == 'shipped') ? 'selected' : '' ?>>Shipped</option>
-                                                    <option value="delivered" <?= ($order['status'] == 'delivered') ? 'selected' : '' ?>>Delivered</option>
-                                                    <option value="cancelled" <?= ($order['status'] == 'cancelled') ? 'selected' : '' ?>>Cancelled</option>
-                                                </select>
-                                                <button type="submit" name="update_status" class="btn btn-sm btn-primary">Update</button>
-                                            </form>
+                                            <span class="badge bg-<?= $order['payment_status'] == 'paid' ? 'success' : ($order['payment_status'] == 'failed' ? 'danger' : 'secondary') ?>">
+                                                <?= ucfirst($order['payment_status']) ?>
+                                            </span>
+                                            <?php if (!empty($order['payment_reference'])): ?>
+                                                <div class="small text-muted">Ref: <?= htmlspecialchars($order['payment_reference']) ?></div>
+                                            <?php endif; ?>
                                         </td>
                                     </tr>
+                                    <?php if (!empty($order['coupon_code'])): ?>
+                                    <tr>
+                                        <th>Coupon Used:</th>
+                                        <td><span class="badge bg-success"><?= htmlspecialchars($order['coupon_code']) ?></span>
+                                            <span class="text-muted small">(&minus;৳<?= number_format($order['discount_amount'], 2) ?>)</span>
+                                        </td>
+                                    </tr>
+                                    <?php endif; ?>
                                 </table>
                             </div>
                             <div class="col-md-6">
@@ -195,12 +206,19 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['update_status'])) {
                                     foreach ($order_items as $item) {
                                         $subtotal += $item['price'] * $item['quantity'];
                                     }
-                                    $shipping = $order['total_amount'] - $subtotal;
+                                    $discount_amount = (float)($order['discount_amount'] ?? 0);
+                                    $shipping = $order['total_amount'] - $subtotal + $discount_amount;
                                     ?>
                                     <tr>
                                         <td colspan="4" class="text-end"><strong>Subtotal:</strong></td>
                                         <td><strong>৳<?= number_format($subtotal, 2) ?></strong></td>
                                     </tr>
+                                    <?php if ($discount_amount > 0): ?>
+                                    <tr class="text-success">
+                                        <td colspan="4" class="text-end"><strong>Coupon (<?= htmlspecialchars($order['coupon_code']) ?>):</strong></td>
+                                        <td><strong>&minus;৳<?= number_format($discount_amount, 2) ?></strong></td>
+                                    </tr>
+                                    <?php endif; ?>
                                     <tr>
                                         <td colspan="4" class="text-end"><strong>Shipping:</strong></td>
                                         <td><strong>৳<?= number_format($shipping, 2) ?></strong></td>
@@ -212,85 +230,83 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['update_status'])) {
                                 </tfoot>
                             </table>
                         </div>
-                        
-                        <div class="mt-4">
-                            <h5>Order Timeline</h5>
-                            <div class="timeline">
-                                <div class="timeline-item <?= ($order['status'] == 'pending') ? 'active' : 'completed' ?>">
-                                    <span class="timeline-marker"></span>
-                                    <div class="timeline-content">
-                                        <h6>Order Placed</h6>
-                                        <p class="mb-0"><?= date('d M, Y h:i A', strtotime($order['order_date'])) ?></p>
-                                    </div>
+                    </div>
+                </div>
+
+                <!-- Update Status & Tracking -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="fas fa-truck"></i> Update Status & Delivery Tracking</h5>
+                    </div>
+                    <div class="card-body">
+                        <form method="POST">
+                            <input type="hidden" name="order_id" value="<?= $order['id'] ?>">
+                            <div class="row">
+                                <div class="col-md-4 mb-3">
+                                    <label class="form-label">Status</label>
+                                    <select class="form-select" name="status" required>
+                                        <option value="pending" <?= ($order['status'] == 'pending') ? 'selected' : '' ?>>Pending</option>
+                                        <option value="confirmed" <?= ($order['status'] == 'confirmed') ? 'selected' : '' ?>>Confirmed</option>
+                                        <option value="processing" <?= ($order['status'] == 'processing') ? 'selected' : '' ?>>Processing</option>
+                                        <option value="shipped" <?= ($order['status'] == 'shipped') ? 'selected' : '' ?>>Shipped</option>
+                                        <option value="delivered" <?= ($order['status'] == 'delivered') ? 'selected' : '' ?>>Delivered</option>
+                                        <option value="cancelled" <?= ($order['status'] == 'cancelled') ? 'selected' : '' ?>>Cancelled</option>
+                                    </select>
                                 </div>
-                                <div class="timeline-item <?= ($order['status'] == 'confirmed') ? 'active' : (in_array($order['status'], ['processing', 'shipped', 'delivered']) ? 'completed' : '') ?>">
-                                    <span class="timeline-marker"></span>
-                                    <div class="timeline-content">
-                                        <h6>Order Confirmed</h6>
-                                        <p class="mb-0">Order confirmed by admin</p>
-                                    </div>
+                                <div class="col-md-4 mb-3">
+                                    <label class="form-label">Courier Name</label>
+                                    <input type="text" name="courier_name" class="form-control" value="<?= htmlspecialchars($order['courier_name'] ?? '') ?>" placeholder="e.g. Pathao, Sundarban">
                                 </div>
-                                <div class="timeline-item <?= ($order['status'] == 'processing') ? 'active' : (in_array($order['status'], ['shipped', 'delivered']) ? 'completed' : '') ?>">
-                                    <span class="timeline-marker"></span>
-                                    <div class="timeline-content">
-                                        <h6>Processing</h6>
-                                        <p class="mb-0">Order is being prepared</p>
-                                    </div>
-                                </div>
-                                <div class="timeline-item <?= ($order['status'] == 'shipped') ? 'active' : ($order['status'] == 'delivered' ? 'completed' : '') ?>">
-                                    <span class="timeline-marker"></span>
-                                    <div class="timeline-content">
-                                        <h6>Shipped</h6>
-                                        <p class="mb-0">Order is on the way</p>
-                                    </div>
-                                </div>
-                                <div class="timeline-item <?= ($order['status'] == 'delivered') ? 'active' : '' ?>">
-                                    <span class="timeline-marker"></span>
-                                    <div class="timeline-content">
-                                        <h6>Delivered</h6>
-                                        <p class="mb-0">Order delivered successfully</p>
-                                    </div>
+                                <div class="col-md-4 mb-3">
+                                    <label class="form-label">Tracking Number</label>
+                                    <input type="text" name="tracking_number" class="form-control" value="<?= htmlspecialchars($order['tracking_number'] ?? '') ?>">
                                 </div>
                             </div>
-                        </div>
-                        
-                        <style>
-                            .timeline {
-                                position: relative;
-                                padding-left: 30px;
-                            }
-                            .timeline-item {
-                                position: relative;
-                                margin-bottom: 20px;
-                            }
-                            .timeline-marker {
-                                position: absolute;
-                                left: -30px;
-                                top: 0;
-                                width: 20px;
-                                height: 20px;
-                                border-radius: 50%;
-                                background: #dee2e6;
-                                border: 3px solid white;
-                            }
-                            .timeline-item.active .timeline-marker {
-                                background: #0d6efd;
-                            }
-                            .timeline-item.completed .timeline-marker {
-                                background: #198754;
-                            }
-                        </style>
-                        
-                        <div class="text-center mt-4">
-                            <a href="orders.php" class="btn btn-secondary">
-                                <i class="fas fa-arrow-left"></i> Back to Orders
-                            </a>
-                            <a href="download-invoice.php?id=<?= $order['id'] ?>" class="btn btn-primary">
-                                <i class="fas fa-download"></i> Download PDF Invoice
-                            </a>
-                        
-                        </div>
+                            <div class="row">
+                                <div class="col-md-4 mb-3">
+                                    <label class="form-label">Current Location <small class="text-muted">(optional)</small></label>
+                                    <input type="text" name="location" class="form-control" placeholder="e.g. Dhaka Hub">
+                                </div>
+                                <div class="col-md-8 mb-3">
+                                    <label class="form-label">Note for this update <small class="text-muted">(optional)</small></label>
+                                    <input type="text" name="note" class="form-control" placeholder="e.g. Package handed to courier">
+                                </div>
+                            </div>
+                            <button type="submit" name="update_status" class="btn btn-primary">
+                                <i class="fas fa-save"></i> Update
+                            </button>
+                        </form>
+
+                        <?php if (count($tracking_events) > 0): ?>
+                            <hr>
+                            <h6>Tracking History</h6>
+                            <ul class="list-group list-group-flush">
+                                <?php foreach (array_reverse($tracking_events) as $event): ?>
+                                    <li class="list-group-item px-0">
+                                        <div class="d-flex justify-content-between">
+                                            <strong class="text-capitalize"><?= htmlspecialchars($event['status']) ?></strong>
+                                            <small class="text-muted"><?= date('d M, Y h:i A', strtotime($event['created_at'])) ?></small>
+                                        </div>
+                                        <?php if (!empty($event['location'])): ?>
+                                            <div class="small text-muted"><i class="fas fa-map-marker-alt"></i> <?= htmlspecialchars($event['location']) ?></div>
+                                        <?php endif; ?>
+                                        <?php if (!empty($event['note'])): ?>
+                                            <div class="small"><?= htmlspecialchars($event['note']) ?></div>
+                                        <?php endif; ?>
+                                    </li>
+                                <?php endforeach; ?>
+                            </ul>
+                        <?php endif; ?>
                     </div>
+                </div>
+                        
+                <div class="text-center mt-4 mb-4">
+                    <a href="orders.php" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Back to Orders
+                    </a>
+                    <a href="download-invoice.php?id=<?= $order['id'] ?>" class="btn btn-primary">
+                        <i class="fas fa-download"></i> Download PDF Invoice
+                    </a>
                 </div>
             </main>
         </div>

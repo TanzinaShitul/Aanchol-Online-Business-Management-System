@@ -36,6 +36,9 @@ $stmt = $conn->prepare($sql);
 $stmt->bindParam(':order_id', $order_id);
 $stmt->execute();
 $order_items = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+$tracking_events = getTrackingEvents($order_id);
+$status_steps = ['pending', 'confirmed', 'processing', 'shipped', 'delivered'];
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -62,7 +65,27 @@ $order_items = $stmt->fetchAll(PDO::FETCH_ASSOC);
             </ol>
         </nav>
 
-        <div class="card">
+        <?php if (isset($_SESSION['error'])): ?>
+            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                <?= htmlspecialchars($_SESSION['error']) ?>
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+            <?php unset($_SESSION['error']); ?>
+        <?php endif; ?>
+
+        <?php if (!empty($order['payment_method']) && $order['payment_method'] !== 'Cash on Delivery' && $order['payment_status'] !== 'paid'): ?>
+            <div class="alert alert-warning d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <span>
+                    <i class="fas fa-exclamation-triangle"></i>
+                    Payment for this order is <strong><?= htmlspecialchars($order['payment_status']) ?></strong>.
+                </span>
+                <a href="sslcommerz-initiate.php?order=<?= urlencode($order['order_number']) ?>" class="btn btn-sm btn-primary">
+                    <i class="fas fa-credit-card"></i> Retry Payment
+                </a>
+            </div>
+        <?php endif; ?>
+
+        <div class="card mb-4">
             <div class="card-header bg-primary text-white">
                 <h4 class="mb-0">Order Details</h4>
             </div>
@@ -81,8 +104,34 @@ $order_items = $stmt->fetchAll(PDO::FETCH_ASSOC);
                             </tr>
                             <tr>
                                 <th>Payment Method:</th>
-                                <td><?= $order['payment_method'] ?></td>
+                                <td><?= htmlspecialchars($order['payment_method']) ?></td>
                             </tr>
+                            <tr>
+                                <th>Payment Status:</th>
+                                <td>
+                                    <span class="badge bg-<?= $order['payment_status'] == 'paid' ? 'success' : ($order['payment_status'] == 'failed' ? 'danger' : 'secondary') ?>">
+                                        <?= ucfirst($order['payment_status']) ?>
+                                    </span>
+                                </td>
+                            </tr>
+                            <?php if (!empty($order['coupon_code'])): ?>
+                            <tr>
+                                <th>Coupon Used:</th>
+                                <td><span class="badge bg-success"><?= htmlspecialchars($order['coupon_code']) ?></span></td>
+                            </tr>
+                            <?php endif; ?>
+                            <?php if (!empty($order['courier_name'])): ?>
+                            <tr>
+                                <th>Courier:</th>
+                                <td><?= htmlspecialchars($order['courier_name']) ?></td>
+                            </tr>
+                            <?php endif; ?>
+                            <?php if (!empty($order['tracking_number'])): ?>
+                            <tr>
+                                <th>Tracking Number:</th>
+                                <td><?= htmlspecialchars($order['tracking_number']) ?></td>
+                            </tr>
+                            <?php endif; ?>
                             <tr>
                                 <th>Status:</th>
                                 <td>
@@ -139,7 +188,7 @@ $order_items = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                 <tr>
                                     <td>
                                         <div class="d-flex align-items-center">
-                                            <img src="../uploads/<?= $item['image'] ?: 'default.jpg' ?>" class="me-3"
+                                            <img src="<?= htmlspecialchars(getProductImageUrl($item['image'] ?? null)) ?>" class="me-3"
                                                 style="width: 50px; height: 50px; object-fit: cover;">
                                             <div>
                                                 <strong><?= htmlspecialchars($item['product_name']) ?></strong>
@@ -159,12 +208,19 @@ $order_items = $stmt->fetchAll(PDO::FETCH_ASSOC);
                             foreach ($order_items as $item) {
                                 $subtotal += $item['price'] * $item['quantity'];
                             }
-                            $shipping = $order['total_amount'] - $subtotal;
+                            $discount_amount = (float)($order['discount_amount'] ?? 0);
+                            $shipping = $order['total_amount'] - $subtotal + $discount_amount;
                             ?>
                             <tr>
                                 <td colspan="4" class="text-end"><strong>Subtotal:</strong></td>
                                 <td><strong>৳<?= number_format($subtotal, 2) ?></strong></td>
                             </tr>
+                            <?php if ($discount_amount > 0): ?>
+                            <tr class="text-success">
+                                <td colspan="4" class="text-end"><strong>Coupon (<?= htmlspecialchars($order['coupon_code']) ?>):</strong></td>
+                                <td><strong>&minus;৳<?= number_format($discount_amount, 2) ?></strong></td>
+                            </tr>
+                            <?php endif; ?>
                             <tr>
                                 <td colspan="4" class="text-end"><strong>Shipping:</strong></td>
                                 <td><strong>৳<?= number_format($shipping, 2) ?></strong></td>
@@ -178,24 +234,70 @@ $order_items = $stmt->fetchAll(PDO::FETCH_ASSOC);
                         </tfoot>
                     </table>
                 </div>
+            </div>
+        </div>
 
-                <div class="row mt-4">
-                    <div class="col-md-12">
-                        <div class="alert alert-info">
-                            <h6><i class="fas fa-info-circle"></i> Order Status Guide</h6>
-                            <ul class="mb-0">
-                                <li><span class="badge bg-warning">Pending</span> - Order received, awaiting
-                                    confirmation</li>
-                                <li><span class="badge bg-info">Confirmed</span> - Order confirmed by admin</li>
-                                <li><span class="badge bg-primary">Processing</span> - Order is being prepared</li>
-                                <li><span class="badge bg-secondary">Shipped</span> - Order is on the way</li>
-                                <li><span class="badge bg-success">Delivered</span> - Order delivered successfully</li>
-                            </ul>
-                        </div>
+        <!-- Delivery Tracking -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-truck"></i> Delivery Tracking</h5>
+            </div>
+            <div class="card-body">
+                <?php if ($order['status'] === 'cancelled'): ?>
+                    <div class="alert alert-danger mb-0">
+                        <i class="fas fa-times-circle"></i> This order has been cancelled.
                     </div>
+                <?php else: ?>
+                    <div class="d-flex justify-content-between text-center mb-4">
+                        <?php $current_index = array_search($order['status'], $status_steps); ?>
+                        <?php foreach ($status_steps as $i => $step): ?>
+                            <div class="flex-fill">
+                                <div class="mx-auto d-flex align-items-center justify-content-center rounded-circle"
+                                     style="width:36px;height:36px;background-color: <?= $i <= $current_index ? 'var(--color-indigo, #1E3A5F)' : '#dee2e6' ?>; color:#fff;">
+                                    <i class="fas fa-check"></i>
+                                </div>
+                                <small class="d-block mt-1 text-capitalize"><?= $step ?></small>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                <?php endif; ?>
+
+                <?php if (count($tracking_events) > 0): ?>
+                    <ul class="list-group list-group-flush">
+                        <?php foreach (array_reverse($tracking_events) as $event): ?>
+                            <li class="list-group-item px-0">
+                                <div class="d-flex justify-content-between">
+                                    <strong class="text-capitalize"><?= htmlspecialchars($event['status']) ?></strong>
+                                    <small class="text-muted"><?= date('d M, Y h:i A', strtotime($event['created_at'])) ?></small>
+                                </div>
+                                <?php if (!empty($event['location'])): ?>
+                                    <div class="small text-muted"><i class="fas fa-map-marker-alt"></i> <?= htmlspecialchars($event['location']) ?></div>
+                                <?php endif; ?>
+                                <?php if (!empty($event['note'])): ?>
+                                    <div class="small"><?= htmlspecialchars($event['note']) ?></div>
+                                <?php endif; ?>
+                            </li>
+                        <?php endforeach; ?>
+                    </ul>
+                <?php endif; ?>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-body">
+                <div class="alert alert-info mb-3">
+                    <h6><i class="fas fa-info-circle"></i> Order Status Guide</h6>
+                    <ul class="mb-0">
+                        <li><span class="badge bg-warning">Pending</span> - Order received, awaiting
+                            confirmation</li>
+                        <li><span class="badge bg-info">Confirmed</span> - Order confirmed by admin</li>
+                        <li><span class="badge bg-primary">Processing</span> - Order is being prepared</li>
+                        <li><span class="badge bg-secondary">Shipped</span> - Order is on the way</li>
+                        <li><span class="badge bg-success">Delivered</span> - Order delivered successfully</li>
+                    </ul>
                 </div>
 
-                <div class="text-center mt-4">
+                <div class="text-center">
                     <a href="order-history.php" class="btn btn-outline-primary">
                         <i class="fas fa-arrow-left"></i> Back to Orders
                     </a>
@@ -205,7 +307,6 @@ $order_items = $stmt->fetchAll(PDO::FETCH_ASSOC);
                     <a href="download-voucher.php?id=<?= $order['id'] ?>" class="btn btn-success">
                         <i class="fas fa-download"></i> Download Voucher
                     </a>
-
                 </div>
             </div>
         </div>

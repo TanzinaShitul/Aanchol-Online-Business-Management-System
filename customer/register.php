@@ -59,100 +59,116 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 ?>
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="icon" href="../images/uploads/logo/logo.png" type="image/png">
     <title>Register - Aanchol</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="../css/login.css">
 </head>
-
 <body>
-    <div class="container mt-5">
-        <div class="row justify-content-center">
-            <div class="col-md-8">
-                <div class="card shadow">
-                    <div class="card-header bg-primary text-white">
-                        <h4 class="mb-0">Create New Account</h4>
-                    </div>
-                    <div class="card-body">
-                        <?php if (isset($error)): ?>
-                            <div class="alert alert-danger"><?= $error ?></div>
-                        <?php endif; ?>
-
-                        <form method="POST">
-                            <div class="row">
-                                <div class="col-md-6 mb-3">
-                                    <label for="name" class="form-label">Full Name *</label>
-                                    <input type="text" class="form-control" id="name" name="name" required>
+    <div class="login-shell">
+        <div class="container py-4">
+            <div class="row justify-content-center">
+                <div class="col-lg-8 col-md-10">
+                    <div class="login-card card border-0 overflow-hidden">
+                        <div class="card-body p-4 p-md-5">
+                            <div class="text-center mb-4">
+                                <div class="brand-badge mx-auto mb-3">
+                                    <i class="fas fa-user-plus"></i>
                                 </div>
-                                <div class="col-md-6 mb-3">
-                                    <label for="email" class="form-label">Email Address *</label>
-                                    <input type="email" class="form-control" id="email" name="email" required>
+                                <h2 class="mb-1">Create your account</h2>
+                                <p class="text-muted mb-0">Join Aanchol and start shopping in minutes</p>
+                            </div>
+
+                            <?php if (isset($error)): ?>
+                                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                                    <?= htmlspecialchars($error) ?>
+                                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                                </div>
+                            <?php endif; ?>
+
+                            <form method="POST">
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label for="name" class="form-label">Full Name *</label>
+                                        <input type="text" class="form-control form-control-lg" id="name" name="name" required>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label for="email" class="form-label">Email Address *</label>
+                                        <input type="email" class="form-control form-control-lg" id="email" name="email" required>
+                                    </div>
+
+                                    <div class="col-12 mb-3">
+                                        <label for="password" class="form-label">Password *</label>
+                                        <input type="password" class="form-control form-control-lg" id="password" name="password"
+                                            minlength="6" required placeholder="At least 6 characters">
+                                    </div>
                                 </div>
 
-                                <!-- Password field (client-side minlength validation) -->
                                 <div class="mb-3">
-                                    <label for="password" class="form-label">Password *</label>
-                                    <input type="password" class="form-control" id="password" name="password"
-                                        minlength="6" required placeholder="At least 6 characters">
+                                    <label for="phone" class="form-label">Phone Number *</label>
+                                    <input type="text" class="form-control form-control-lg" id="phone" name="phone" required>
                                 </div>
+
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label for="division" class="form-label">Division (Area) *</label>
+                                        <select class="form-control form-control-lg" id="division" name="division" required>
+                                            <option value="">Select Division</option>
+                                            <?php
+                                            $divisions = getDivisions();
+                                            foreach ($divisions as $division) {
+                                                echo "<option value='{$division['id']}'>{$division['name']} ({$division['name_en']})</option>";
+                                            }
+                                            ?>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label for="district" class="form-label">District (Jela) *</label>
+                                        <select class="form-control form-control-lg" id="district" name="district" required disabled>
+                                            <option value="">Select District</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label for="upazila" class="form-label">Upazila (Thana) *</label>
+                                        <select class="form-control form-control-lg" id="upazila" name="upazila" required disabled>
+                                            <option value="">Select Upazila</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label for="detailed_address" class="form-label">Detailed Address *</label>
+                                        <textarea class="form-control form-control-lg" id="detailed_address" name="detailed_address"
+                                            rows="2" required placeholder="House/Road/Area details"></textarea>
+                                    </div>
+                                </div>
+
+                                <div class="mb-3 form-check">
+                                    <input type="checkbox" class="form-check-input" id="terms" required>
+                                    <label class="form-check-label" for="terms">
+                                        I agree to the <a href="#">Terms & Conditions</a>
+                                    </label>
+                                </div>
+
+                                <button type="submit" class="btn btn-primary btn-lg w-100">Create Account</button>
+                            </form>
+
+                            <div class="d-flex align-items-center gap-2 my-4">
+                                <div class="flex-grow-1 border-bottom"></div>
+                                <small class="text-muted">Already registered?</small>
+                                <div class="flex-grow-1 border-bottom"></div>
                             </div>
 
-                            <div class="mb-3">
-                                <label for="phone" class="form-label">Phone Number *</label>
-                                <input type="text" class="form-control" id="phone" name="phone" required>
+                            <div class="text-center">
+                                <a href="login.php" class="btn btn-outline-secondary w-100">Login here</a>
                             </div>
-
-                            <div class="row">
-                                <div class="col-md-6 mb-3">
-                                    <label for="division" class="form-label">Division (Area) *</label>
-                                    <select class="form-control" id="division" name="division" required>
-                                        <option value="">Select Division</option>
-                                        <?php
-                                        $divisions = getDivisions();
-                                        foreach ($divisions as $division) {
-                                            echo "<option value='{$division['id']}'>{$division['name']} ({$division['name_en']})</option>";
-                                        }
-                                        ?>
-                                    </select>
-                                </div>
-                                <div class="col-md-6 mb-3">
-                                    <label for="district" class="form-label">District (Jela) *</label>
-                                    <select class="form-control" id="district" name="district" required disabled>
-                                        <option value="">Select District</option>
-                                    </select>
-                                </div>
-                            </div>
-
-                            <div class="row">
-                                <div class="col-md-6 mb-3">
-                                    <label for="upazila" class="form-label">Upazila (Thana) *</label>
-                                    <select class="form-control" id="upazila" name="upazila" required disabled>
-                                        <option value="">Select Upazila</option>
-                                    </select>
-                                </div>
-                                <div class="col-md-6 mb-3">
-                                    <label for="detailed_address" class="form-label">Detailed Address *</label>
-                                    <textarea class="form-control" id="detailed_address" name="detailed_address"
-                                        rows="2" required placeholder="House/Road/Area details"></textarea>
-                                </div>
-                            </div>
-
-                            <div class="mb-3 form-check">
-                                <input type="checkbox" class="form-check-input" id="terms" required>
-                                <label class="form-check-label" for="terms">
-                                    I agree to the <a href="#">Terms & Conditions</a>
-                                </label>
-                            </div>
-
-                            <button type="submit" class="btn btn-primary w-100">Create Account</button>
-                        </form>
-
-                        <hr>
-                        <p class="text-center">Already have an account? <a href="login.php">Login here</a></p>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -166,14 +182,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             const districtSelect = document.getElementById('district');
             const upazilaSelect = document.getElementById('upazila');
 
-            // Reset districts and upazilas
             districtSelect.innerHTML = '<option value="">Select District</option>';
             upazilaSelect.innerHTML = '<option value="">Select Upazila</option>';
             districtSelect.disabled = true;
             upazilaSelect.disabled = true;
 
             if (divisionId) {
-                // Fetch districts via AJAX
                 fetch(`../includes/get_locations.php?type=districts&division_id=${divisionId}`)
                     .then(response => response.json())
                     .then(data => {
@@ -189,12 +203,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             const districtId = this.value;
             const upazilaSelect = document.getElementById('upazila');
 
-            // Reset upazilas
             upazilaSelect.innerHTML = '<option value="">Select Upazila</option>';
             upazilaSelect.disabled = true;
 
             if (districtId) {
-                // Fetch upazilas via AJAX
                 fetch(`../includes/get_locations.php?type=upazilas&district_id=${districtId}`)
                     .then(response => response.json())
                     .then(data => {
@@ -207,5 +219,4 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         });
     </script>
 </body>
-
 </html>

@@ -95,6 +95,7 @@ $categories = getCategories();
                                         <th>Name</th>
                                         <th>Category</th>
                                         <th>Price</th>
+                                        <th>Discount</th>
                                         <th>Stock</th>
                                         <th>Status</th>
                                         <th>Actions</th>
@@ -102,6 +103,7 @@ $categories = getCategories();
                                 </thead>
                                 <tbody>
                                     <?php foreach ($products as $product): ?>
+                                    <?php $pricing = getEffectivePrice($product); ?>
                                     <tr>
                                         <td><?= $product['id'] ?></td>
                                         <td>
@@ -111,7 +113,23 @@ $categories = getCategories();
                                         </td>
                                         <td><?= htmlspecialchars($product['name']) ?></td>
                                         <td><?= $product['category_name'] ?></td>
-                                        <td>৳<?= number_format($product['price'], 2) ?></td>
+                                        <td>
+                                            <?php if ($pricing['has_discount']): ?>
+                                                <span class="text-muted text-decoration-line-through small d-block">৳<?= number_format($pricing['original_price'], 2) ?></span>
+                                                <span class="text-danger fw-bold">৳<?= number_format($pricing['final_price'], 2) ?></span>
+                                            <?php else: ?>
+                                                ৳<?= number_format($product['price'], 2) ?>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td>
+                                            <?php if ($pricing['has_discount']): ?>
+                                                <span class="badge bg-danger"><?= rtrim(rtrim(number_format($pricing['percent'], 2), '0'), '.') ?>% OFF</span>
+                                            <?php elseif ((float)($product['discount_percent'] ?? 0) > 0): ?>
+                                                <span class="badge bg-secondary" title="Outside its active date window">scheduled</span>
+                                            <?php else: ?>
+                                                <span class="text-muted small">&mdash;</span>
+                                            <?php endif; ?>
+                                        </td>
                                         <td>
                                             <?php if ($product['stock'] == 0): ?>
                                                 <span class="badge bg-danger">Out of Stock</span>

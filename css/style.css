@@ -1,139 +1,510 @@
-/* Main Styles */
+/* ==========================================================================
+   AANCHOL — Design System
+   Palette + type grounded in Bangladeshi handloom textile tradition:
+   Jamdani indigo, Rani-pink, turmeric gold, muslin ivory.
+   Signature motif: "kantha stitch" dashed underline on headings.
+   ========================================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Baloo+Da+2:wght@500;600;700;800&family=Hind+Siliguri:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap');
+
+:root {
+  /* Color tokens */
+  --color-indigo: #1E3A5F;
+  --color-indigo-dark: #142A45;
+  --color-indigo-light: #2E5480;
+  --color-pink: #B23A62;
+  --color-pink-dark: #8E2C4C;
+  --color-gold: #C9962F;
+  --color-gold-light: #E4B95C;
+  --color-ivory: #F5F1E6;
+  --color-ivory-dim: #EDE6D6;
+  --color-charcoal: #26221C;
+  --color-charcoal-soft: #52493B;
+  --color-white: #FFFFFF;
+  --color-success: #3F7D53;
+  --color-danger: #B23A3A;
+  --color-warning: #C9962F;
+  --color-border: #E1D9C6;
+
+  /* Typography */
+  --font-display: 'Baloo Da 2', 'Hind Siliguri', sans-serif;
+  --font-body: 'Hind Siliguri', 'Segoe UI', Tahoma, sans-serif;
+  --font-data: 'Inter', 'Hind Siliguri', sans-serif;
+
+  /* Spacing / shape */
+  --radius-sm: 6px;
+  --radius-md: 12px;
+  --radius-lg: 20px;
+  --shadow-soft: 0 4px 20px rgba(38, 34, 28, 0.08);
+  --shadow-lift: 0 12px 32px rgba(30, 58, 95, 0.16);
+  --transition: 220ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+* { -webkit-font-smoothing: antialiased; }
+
+html { scroll-behavior: smooth; }
+
 body {
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  font-family: var(--font-body);
+  background-color: var(--color-ivory);
+  color: var(--color-charcoal);
+  line-height: 1.6;
 }
 
-/* Navbar Logo */
+h1, h2, h3, h4, h5, h6,
+.card-title, .navbar-brand-text {
+  font-family: var(--font-display);
+  font-weight: 700;
+  color: var(--color-indigo);
+  letter-spacing: 0.01em;
+}
+
+/* Kantha-stitch signature underline — used sparingly on section titles */
+.section-title,
+h2.text-center.mb-5 {
+  position: relative;
+  display: inline-block;
+  padding-bottom: 14px;
+  margin-left: auto;
+  margin-right: auto;
+}
+.section-title::after,
+h2.text-center.mb-5::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  transform: translateX(-50%);
+  width: 72px;
+  height: 3px;
+  background-image: repeating-linear-gradient(
+    90deg,
+    var(--color-gold) 0 8px,
+    transparent 8px 14px
+  );
+}
+
+/* Focus visibility (accessibility floor) */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 3px solid var(--color-gold);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ==========================================================================
+   Navbar
+   ========================================================================== */
+.navbar {
+  background-color: var(--color-white) !important;
+  border-bottom: 1px solid var(--color-border);
+  padding-top: 0.85rem;
+  padding-bottom: 0.85rem;
+}
+
 .navbar-logo {
-    width: 40px; /* Adjust this value to resize the logo */
-    height: auto;
+  width: 38px;
+  height: auto;
+  border-radius: var(--radius-sm);
 }
 
-/* Product Cards */
+.navbar-brand-text {
+  font-size: 1.25rem;
+  color: var(--color-indigo);
+}
+
+.navbar-nav .nav-link {
+  font-weight: 600;
+  color: var(--color-charcoal-soft) !important;
+  padding: 0.5rem 0.9rem !important;
+  border-radius: var(--radius-sm);
+  transition: color var(--transition), background-color var(--transition);
+}
+
+.navbar-nav .nav-link:hover {
+  color: var(--color-indigo) !important;
+  background-color: var(--color-ivory-dim);
+}
+
+@media (max-width: 991.98px) {
+  .navbar-collapse {
+    padding-top: 0.75rem;
+  }
+  .navbar-collapse .d-flex {
+    flex-direction: column;
+    align-items: stretch !important;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+  }
+  .navbar-collapse .btn {
+    width: 100%;
+    justify-content: center;
+    display: flex;
+    align-items: center;
+  }
+}
+
+/* ==========================================================================
+   Buttons
+   ========================================================================== */
+.btn {
+  font-weight: 600;
+  border-radius: var(--radius-sm);
+  padding: 0.55rem 1.2rem;
+  transition: transform var(--transition), box-shadow var(--transition), background-color var(--transition);
+}
+
+.btn-primary {
+  background-color: var(--color-indigo);
+  border-color: var(--color-indigo);
+}
+.btn-primary:hover,
+.btn-primary:focus {
+  background-color: var(--color-indigo-dark);
+  border-color: var(--color-indigo-dark);
+  transform: translateY(-1px);
+}
+
+.btn-success {
+  background-color: var(--color-success);
+  border-color: var(--color-success);
+}
+
+.btn-outline-primary {
+  color: var(--color-indigo);
+  border-color: var(--color-indigo);
+}
+.btn-outline-primary:hover {
+  background-color: var(--color-indigo);
+  border-color: var(--color-indigo);
+}
+
+.btn-danger {
+  background-color: var(--color-danger);
+  border-color: var(--color-danger);
+}
+
+.btn-lg {
+  padding: 0.75rem 1.6rem;
+  border-radius: var(--radius-md);
+}
+
+/* Minimum touch target on mobile */
+@media (max-width: 575.98px) {
+  .btn { min-height: 44px; }
+}
+
+/* ==========================================================================
+   Hero
+   ========================================================================== */
+.hero-section {
+  background: linear-gradient(135deg, var(--color-ivory) 0%, var(--color-ivory-dim) 100%);
+  border-bottom: 1px solid var(--color-border);
+  position: relative;
+  overflow: hidden;
+}
+
+.hero-section::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: repeating-linear-gradient(
+    90deg,
+    var(--color-gold-light) 0 10px,
+    transparent 10px 20px
+  );
+  opacity: 0.25;
+  height: 4px;
+  top: 0;
+}
+
+.hero-section h1 {
+  font-size: clamp(1.85rem, 4vw, 3rem);
+  color: var(--color-indigo);
+}
+
+.hero-section .lead {
+  color: var(--color-charcoal-soft);
+  font-size: clamp(1rem, 2vw, 1.15rem);
+}
+
+.hero-section img {
+  border-radius: var(--radius-lg);
+}
+
+@media (max-width: 767.98px) {
+  .hero-section .row { text-align: center; }
+  .hero-section .col-md-6:first-child { margin-bottom: 1.5rem; }
+}
+
+/* ==========================================================================
+   Product & category cards
+   ========================================================================== */
 .product-card {
-    transition: transform 0.3s, box-shadow 0.3s;
-    border: none;
-    overflow: hidden;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-soft);
+  background-color: var(--color-white);
 }
 
 .product-card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+  box-shadow: var(--shadow-lift);
 }
 
-.product-card img {
-    height: 200px;
-    object-fit: cover;
-    transition: transform 0.5s;
+.product-card .card-title {
+  font-size: 1.05rem;
+  color: var(--color-charcoal);
 }
 
-.product-card:hover img {
-    transform: scale(1.05);
+.product-card .text-primary,
+.card-text.text-primary,
+h2.text-primary,
+h5.text-primary {
+  color: var(--color-gold) !important;
+  font-family: var(--font-data);
+  font-weight: 700;
 }
 
-/* Category Cards */
+.product-card .badge.bg-secondary {
+  background-color: var(--color-indigo-light) !important;
+  font-weight: 500;
+}
+
 .category-card {
-    transition: all 0.3s;
-    border: 1px solid #e0e0e0;
+  border-radius: var(--radius-md);
+  border-color: var(--color-border) !important;
 }
-
 .category-card:hover {
-    background-color: #f8f9fa;
-    border-color: #0d6efd;
-    transform: translateY(-3px);
+  border-color: var(--color-gold) !important;
+}
+.category-icon i {
+  color: var(--color-indigo) !important;
 }
 
-/* Cart */
-.cart-item {
-    border-bottom: 1px solid #e0e0e0;
-    padding: 15px 0;
+/* ==========================================================================
+   Cards, badges, alerts generally
+   ========================================================================== */
+.card {
+  border-radius: var(--radius-md);
+  border-color: var(--color-border);
 }
 
-/* Admin Sidebar */
+.card-header.bg-primary {
+  background-color: var(--color-indigo) !important;
+  border-radius: var(--radius-md) var(--radius-md) 0 0 !important;
+}
+
+.badge.bg-primary { background-color: var(--color-indigo) !important; }
+.badge.bg-success { background-color: var(--color-success) !important; }
+.badge.bg-warning { background-color: var(--color-gold) !important; color: var(--color-white) !important; }
+.badge.bg-danger  { background-color: var(--color-danger) !important; }
+.badge.bg-info    { background-color: var(--color-indigo-light) !important; }
+
+/* ==========================================================================
+   Forms
+   ========================================================================== */
+.form-label {
+  font-weight: 600;
+  color: var(--color-charcoal-soft);
+  font-size: 0.92rem;
+}
+
+.form-control, .form-select {
+  border-radius: var(--radius-sm);
+  border-color: var(--color-border);
+  padding: 0.6rem 0.85rem;
+}
+
+.form-control:focus, .form-select:focus {
+  border-color: var(--color-indigo);
+  box-shadow: 0 0 0 0.2rem rgba(30, 58, 95, 0.15);
+}
+
+/* ==========================================================================
+   Tables — responsive scroll + readable stacking on very small screens
+   ========================================================================== */
+.table-responsive {
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  -webkit-overflow-scrolling: touch;
+}
+
+.table thead.table-dark th,
+.table thead.table-light th {
+  font-family: var(--font-data);
+  font-size: 0.82rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.table thead.table-dark th {
+  background-color: var(--color-indigo);
+}
+
+@media (max-width: 575.98px) {
+  table.table-bordered td,
+  table.table-bordered th {
+    font-size: 0.85rem;
+    padding: 0.5rem;
+  }
+}
+
+/* ==========================================================================
+   Cart / checkout summary
+   ========================================================================== */
+.cart-item img { border-radius: var(--radius-sm); }
+
+@media (min-width: 992px) {
+  .col-lg-4 > .card { position: sticky; top: 1rem; }
+}
+
+@media (max-width: 767.98px) {
+  .cart-item .col-md-1,
+  .cart-item .col-md-2,
+  .cart-item .col-md-3,
+  .cart-item .col-md-4 {
+    margin-bottom: 0.5rem;
+  }
+}
+
+/* ==========================================================================
+   Admin — sidebar (off-canvas on mobile)
+   ========================================================================== */
 .sidebar {
-    min-height: 100vh;
-    box-shadow: inset -1px 0 0 rgba(0, 0, 0, .1);
+  background-color: var(--color-indigo-dark) !important;
+  transition: transform var(--transition);
 }
 
+.sidebar .navbar-brand-text { color: var(--color-white); }
+
+.sidebar .nav-link.active {
+  background-color: rgba(255, 255, 255, 0.12);
+  border-left-color: var(--color-gold) !important;
+}
+
+#adminSidebarToggle {
+  display: none;
+  position: fixed;
+  top: 12px;
+  left: 12px;
+  z-index: 1050;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: none;
+  background-color: var(--color-indigo);
+  color: var(--color-white);
+  box-shadow: var(--shadow-lift);
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+}
+
+.admin-sidebar-backdrop {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(20, 42, 69, 0.45);
+  z-index: 1030;
+}
+
+@media (max-width: 767.98px) {
+  #adminSidebarToggle { display: flex; }
+
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100vh;
+    width: 260px;
+    z-index: 1040;
+    transform: translateX(-100%);
+  }
+
+  .sidebar.sidebar-open {
+    transform: translateX(0);
+  }
+
+  body.admin-sidebar-open .admin-sidebar-backdrop {
+    display: block;
+  }
+
+  main.col-md-10 {
+    margin-left: 0 !important;
+    padding-top: 4.5rem !important;
+    width: 100% !important;
+  }
+}
+
+/* ==========================================================================
+   Footer
+   ========================================================================== */
+footer.bg-dark {
+  background-color: var(--color-indigo-dark) !important;
+}
+footer h4, footer h5 { color: var(--color-white); font-family: var(--font-display); }
+
+/* ==========================================================================
+   Login / register cards
+   ========================================================================== */
+.login-card, .card.shadow {
+  border-radius: var(--radius-lg);
+}
+
+.login-card .btn-primary,
+form .btn-primary.w-100 {
+  border-radius: var(--radius-sm);
+}
+
+/* Password visibility toggle */
+.password-toggle { color: var(--color-charcoal-soft); }
+.password-toggle:hover { color: var(--color-indigo); }
+
+/* ==========================================================================
+   Misc responsive polish
+   ========================================================================== */
+@media (max-width: 575.98px) {
+  .container, .container-fluid { padding-left: 1rem; padding-right: 1rem; }
+  h1 { font-size: 1.6rem; }
+  h2 { font-size: 1.35rem; }
+  .display-1 { font-size: 3rem; }
+}
+
+.cart-badge {
+  background: var(--color-pink);
+}
+
+/* Existing utility classes retained for compatibility */
 .sidebar .nav-link {
-    color: #adb5bd;
-    padding: 0.75rem 1rem;
-    border-left: 3px solid transparent;
+  color: #adb5bd;
+  padding: 0.75rem 1rem;
+  border-left: 3px solid transparent;
 }
-
 .sidebar .nav-link:hover,
 .sidebar .nav-link.active {
-    color: #fff;
-    background-color: rgba(255, 255, 255, 0.1);
-    border-left-color: #0d6efd;
+  color: #fff;
+  background-color: rgba(255, 255, 255, 0.1);
+  border-left-color: var(--color-gold);
 }
-
-/* Responsive */
-@media (max-width: 768px) {
-    .sidebar {
-        min-height: auto;
-        position: static;
-    }
-    .product-card img {
-        height: 150px;
-    }
-}
-
-/* Form Styles */
-.form-control:focus {
-    border-color: #0d6efd;
-    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
-}
-
-/* Button Styles */
-.btn-primary {
-    background-color: #0d6efd;
-    border-color: #0d6efd;
-}
-
-.btn-primary:hover {
-    background-color: #0b5ed7;
-    border-color: #0a58ca;
-}
-
-/* Alert Colors */
-.alert-warning {
-    background-color: #fff3cd;
-    border-color: #ffecb5;
-    color: #856404;
-}
-
-/* Password visibility toggle styles */
-.password-input-group {
-    position: relative;
-}
-
+.password-input-group { position: relative; }
+.form-control-wrapper { position: relative; }
 .password-toggle {
-    position: absolute;
-    right: 10px;
-    top: 50%;
-    transform: translateY(-50%);
-    cursor: pointer;
-    color: #666;
-    border: none;
-    background: none;
-    padding: 5px;
-}
-
-.password-toggle:hover {
-    color: #333;
-}
-
-.form-control-wrapper {
-    position: relative;
-}
-.cart-badge {
-    position: absolute;
-    top: -5px;
-    right: -5px;
-    background: red;
-    color: white;
-    font-size: 12px;
-    padding: 3px 6px;
-    border-radius: 50%;
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  cursor: pointer;
+  border: none;
+  background: none;
+  padding: 5px;
 }

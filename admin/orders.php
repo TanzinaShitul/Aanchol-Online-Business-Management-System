@@ -23,6 +23,7 @@ if (isset($_POST['update_status'])) {
     $stmt->bindParam(':id', $order_id, PDO::PARAM_INT);
     
     if ($stmt->execute()) {
+        addTrackingEvent($order_id, $status);
         $_SESSION['success'] = "Order status updated successfully!";
     } else {
         $_SESSION['error'] = "Failed to update order status!";
@@ -134,6 +135,7 @@ $stats = $stmt->fetch(PDO::FETCH_ASSOC);
                                         <th>Date</th>
                                         <th>Amount</th>
                                         <th>Payment</th>
+                                        <th>Payment Status</th>
                                         <th>Status</th>
                                         <th>Actions</th>
                                     </tr>
@@ -145,7 +147,12 @@ $stats = $stmt->fetch(PDO::FETCH_ASSOC);
                                         <td><?= htmlspecialchars($order['customer_name']) ?></td>
                                         <td><?= date('d M, Y', strtotime($order['order_date'])) ?></td>
                                         <td>৳<?= number_format($order['total_amount'], 2) ?></td>
-                                        <td><?= $order['payment_method'] ?></td>
+                                        <td><?= htmlspecialchars($order['payment_method']) ?></td>
+                                        <td>
+                                            <span class="badge bg-<?= $order['payment_status'] == 'paid' ? 'success' : ($order['payment_status'] == 'failed' ? 'danger' : 'secondary') ?>">
+                                                <?= ucfirst($order['payment_status']) ?>
+                                            </span>
+                                        </td>
                                         <td>
                                             <span class="badge bg-<?= 
                                                 $order['status'] == 'pending' ? 'warning' : 
@@ -158,12 +165,10 @@ $stats = $stmt->fetch(PDO::FETCH_ASSOC);
                                             </span>
                                         </td>
                                         <td>
-                                            <div class="btn-group" role="group">
+                                            <div class="d-flex flex-wrap align-items-center gap-2">
                                                 <a href="order-details.php?id=<?= $order['id'] ?>" class="btn btn-sm btn-primary">
                                                     <i class="fas fa-eye"></i> View
                                                 </a>
-                                            </div>
-                                            <div class="btn-group ms-2" role="group">
                                                 <button type="button" class="btn btn-sm btn-warning" data-bs-toggle="modal" data-bs-target="#statusModal<?= htmlspecialchars($order['id']) ?>">
                                                     <i class="fas fa-edit"></i> Status
                                                 </button>

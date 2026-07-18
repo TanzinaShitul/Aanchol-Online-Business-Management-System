@@ -32,6 +32,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $category_id = $_POST['category_id'];
     $stock = $_POST['stock'];
     $status = $_POST['status'];
+    $discount_percent = $_POST['discount_percent'] !== '' ? $_POST['discount_percent'] : 0;
+    $discount_starts_at = $_POST['discount_starts_at'] !== '' ? $_POST['discount_starts_at'] : null;
+    $discount_ends_at = $_POST['discount_ends_at'] !== '' ? $_POST['discount_ends_at'] : null;
     
     // Handle image upload
     $image = $product['image'];
@@ -52,32 +55,47 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             }
         }
     }
-    
-    // Update product
-    $sql = "UPDATE products SET 
-            name = :name, 
-            description = :description, 
-            price = :price, 
-            category_id = :category_id, 
-            stock = :stock, 
-            image = :image, 
-            status = :status 
-            WHERE id = :id";
-    $stmt = $conn->prepare($sql);
-    $stmt->bindParam(':name', $name);
-    $stmt->bindParam(':description', $description);
-    $stmt->bindParam(':price', $price);
-    $stmt->bindParam(':category_id', $category_id);
-    $stmt->bindParam(':stock', $stock);
-    $stmt->bindParam(':image', $image);
-    $stmt->bindParam(':status', $status);
-    $stmt->bindParam(':id', $product_id);
-    
-    if ($stmt->execute()) {
-        $_SESSION['success'] = "Product updated successfully!";
-        redirect('products.php');
+
+    if ($discount_percent < 0 || $discount_percent > 90) {
+        $error = "Discount percentage must be between 0 and 90.";
     } else {
-        $error = "Failed to update product!";
+        // Update product
+        $sql = "UPDATE products SET 
+                name = :name, 
+                description = :description, 
+                price = :price, 
+                category_id = :category_id, 
+                stock = :stock, 
+                image = :image, 
+                status = :status,
+                discount_percent = :discount_percent,
+                discount_starts_at = :discount_starts_at,
+                discount_ends_at = :discount_ends_at
+                WHERE id = :id";
+        $stmt = $conn->prepare($sql);
+        $stmt->bindParam(':name', $name);
+        $stmt->bindParam(':description', $description);
+        $stmt->bindParam(':price', $price);
+        $stmt->bindParam(':category_id', $category_id);
+        $stmt->bindParam(':stock', $stock);
+        $stmt->bindParam(':image', $image);
+        $stmt->bindParam(':status', $status);
+        $stmt->bindParam(':discount_percent', $discount_percent);
+        $stmt->bindParam(':discount_starts_at', $discount_starts_at);
+        $stmt->bindParam(':discount_ends_at', $discount_ends_at);
+        $stmt->bindParam(':id', $product_id);
+        
+        if ($stmt->execute()) {
+            $_SESSION['success'] = "Product updated successfully!";
+            redirect('products.php');
+        } else {
+            $error = "Failed to update product!";
+        }
+        $product = array_merge($product, [
+            'discount_percent' => $discount_percent,
+            'discount_starts_at' => $discount_starts_at,
+            'discount_ends_at' => $discount_ends_at,
+        ]);
     }
 }
 ?>
@@ -165,6 +183,27 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                                         <option value="active" <?= ($product['status'] == 'active') ? 'selected' : '' ?>>Active</option>
                                         <option value="inactive" <?= ($product['status'] == 'inactive') ? 'selected' : '' ?>>Inactive</option>
                                     </select>
+                                </div>
+                            </div>
+
+                            <div class="card bg-light">
+                                <div class="card-body">
+                                    <h6 class="mb-3"><i class="fas fa-percentage"></i> Discount (optional)</h6>
+                                    <div class="row">
+                                        <div class="col-md-4 mb-3">
+                                            <label for="discount_percent" class="form-label">Discount %</label>
+                                            <input type="number" class="form-control" id="discount_percent" name="discount_percent" step="0.01" min="0" max="90" value="<?= htmlspecialchars($product['discount_percent'] ?? 0) ?>">
+                                        </div>
+                                        <div class="col-md-4 mb-3">
+                                            <label for="discount_starts_at" class="form-label">Starts</label>
+                                            <input type="date" class="form-control" id="discount_starts_at" name="discount_starts_at" value="<?= htmlspecialchars($product['discount_starts_at'] ?? '') ?>">
+                                        </div>
+                                        <div class="col-md-4 mb-3">
+                                            <label for="discount_ends_at" class="form-label">Ends</label>
+                                            <input type="date" class="form-control" id="discount_ends_at" name="discount_ends_at" value="<?= htmlspecialchars($product['discount_ends_at'] ?? '') ?>">
+                                        </div>
+                                    </div>
+                                    <small class="text-muted">Leave dates blank for an always-on discount. Set percent to 0 to remove the discount.</small>
                                 </div>
                             </div>
                             

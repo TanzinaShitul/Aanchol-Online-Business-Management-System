@@ -9,9 +9,6 @@ if (!isAdmin()) {
 // Get categories from database
 $categories = getCategories();
 
-// Debug: Check what's in $categories
-error_log("Categories: " . print_r($categories, true));
-
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $name = $_POST['name'];
     $description = $_POST['description'];
@@ -19,6 +16,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $category_id = $_POST['category_id'];
     $stock = $_POST['stock'];
     $status = $_POST['status'];
+    $discount_percent = $_POST['discount_percent'] !== '' ? $_POST['discount_percent'] : 0;
+    $discount_starts_at = $_POST['discount_starts_at'] !== '' ? $_POST['discount_starts_at'] : null;
+    $discount_ends_at = $_POST['discount_ends_at'] !== '' ? $_POST['discount_ends_at'] : null;
     
     // Handle image upload
     $image = 'default.jpg';
@@ -35,24 +35,31 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             }
         }
     }
-    
-    // Insert product
-    $sql = "INSERT INTO products (name, description, price, category_id, stock, image, status) 
-            VALUES (:name, :description, :price, :category_id, :stock, :image, :status)";
-    $stmt = $conn->prepare($sql);
-    $stmt->bindParam(':name', $name);
-    $stmt->bindParam(':description', $description);
-    $stmt->bindParam(':price', $price);
-    $stmt->bindParam(':category_id', $category_id);
-    $stmt->bindParam(':stock', $stock);
-    $stmt->bindParam(':image', $image);
-    $stmt->bindParam(':status', $status);
-    
-    if ($stmt->execute()) {
-        $_SESSION['success'] = "Product added successfully!";
-        redirect('products.php');
+
+    if ($discount_percent < 0 || $discount_percent > 90) {
+        $error = "Discount percentage must be between 0 and 90.";
     } else {
-        $error = "Failed to add product!";
+        // Insert product
+        $sql = "INSERT INTO products (name, description, price, category_id, stock, image, status, discount_percent, discount_starts_at, discount_ends_at) 
+                VALUES (:name, :description, :price, :category_id, :stock, :image, :status, :discount_percent, :discount_starts_at, :discount_ends_at)";
+        $stmt = $conn->prepare($sql);
+        $stmt->bindParam(':name', $name);
+        $stmt->bindParam(':description', $description);
+        $stmt->bindParam(':price', $price);
+        $stmt->bindParam(':category_id', $category_id);
+        $stmt->bindParam(':stock', $stock);
+        $stmt->bindParam(':image', $image);
+        $stmt->bindParam(':status', $status);
+        $stmt->bindParam(':discount_percent', $discount_percent);
+        $stmt->bindParam(':discount_starts_at', $discount_starts_at);
+        $stmt->bindParam(':discount_ends_at', $discount_ends_at);
+        
+        if ($stmt->execute()) {
+            $_SESSION['success'] = "Product added successfully!";
+            redirect('products.php');
+        } else {
+            $error = "Failed to add product!";
+        }
     }
 }
 ?>
@@ -66,58 +73,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
      <link rel="stylesheet" href="../css/style.css">
-    <style>
-        .sidebar {
-            min-height: 100vh;
-            background: #343a40;
-        }
-        .sidebar .nav-link {
-            color: #adb5bd;
-            padding: 0.75rem 1rem;
-        }
-        .sidebar .nav-link:hover,
-        .sidebar .nav-link.active {
-            color: #fff;
-            background: rgba(255,255,255,0.1);
-        }
-    </style>
 </head>
 <body>
     <div class="container-fluid">
         <div class="row">
-            <!-- Sidebar -->
-            <nav class="col-md-2 d-md-block sidebar">
-                <div class="position-sticky pt-3">
-                    <h4 class="text-white text-center mb-4">AANCHOL ADMIN</h4>
-                    <ul class="nav flex-column">
-                        <li class="nav-item">
-                            <a class="nav-link text-white" href="dashboard.php">
-                                <i class="fas fa-tachometer-alt"></i> Dashboard
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link text-white active" href="products.php">
-                                <i class="fas fa-box"></i> Products
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link text-white" href="orders.php">
-                                <i class="fas fa-shopping-cart"></i> Orders
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link text-white" href="reports.php">
-                                <i class="fas fa-chart-bar"></i> Reports
-                            </a>
-                        </li>
-                        <li class="nav-item mt-5">
-                            <a class="nav-link text-white" href="logout.php">
-                                <i class="fas fa-sign-out-alt"></i> Logout
-                            </a>
-                        </li>
-                    </ul>
-                </div>
-            </nav>
+            <?php include 'includes/sidebar.php'; ?>
 
             <main class="col-md-10 ms-sm-auto px-md-4">
                 <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
@@ -191,6 +151,27 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                                         <option value="active">Active</option>
                                         <option value="inactive">Inactive</option>
                                     </select>
+                                </div>
+                            </div>
+
+                            <div class="card bg-light">
+                                <div class="card-body">
+                                    <h6 class="mb-3"><i class="fas fa-percentage"></i> Discount (optional)</h6>
+                                    <div class="row">
+                                        <div class="col-md-4 mb-3">
+                                            <label for="discount_percent" class="form-label">Discount %</label>
+                                            <input type="number" class="form-control" id="discount_percent" name="discount_percent" step="0.01" min="0" max="90" value="0">
+                                        </div>
+                                        <div class="col-md-4 mb-3">
+                                            <label for="discount_starts_at" class="form-label">Starts</label>
+                                            <input type="date" class="form-control" id="discount_starts_at" name="discount_starts_at">
+                                        </div>
+                                        <div class="col-md-4 mb-3">
+                                            <label for="discount_ends_at" class="form-label">Ends</label>
+                                            <input type="date" class="form-control" id="discount_ends_at" name="discount_ends_at">
+                                        </div>
+                                    </div>
+                                    <small class="text-muted">Leave dates blank for an always-on discount. Leave percent at 0 for no discount.</small>
                                 </div>
                             </div>
                             

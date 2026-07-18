@@ -35,16 +35,7 @@ $stmt->execute([':order_id' => $order_id]);
 $items = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // ================= LOAD TCPDF VIA COMPOSER =================
-$tcpdf_loaded = false;
-
-// Try Composer autoload first
-if (file_exists(__DIR__ . '/../vendor/autoload.php')) {
-    require_once __DIR__ . '/../vendor/autoload.php';
-    $tcpdf_loaded = class_exists('TCPDF');
-}
-
-// If Composer not available, die with helpful error message
-if (!$tcpdf_loaded) {
+if (!file_exists(__DIR__ . '/../vendor/autoload.php')) {
     die('<div style="font-family:Arial;padding:20px;"><h2>PDF Library Not Found</h2>' .
          '<p>TCPDF is not installed. To enable PDF invoice downloads, please run:</p>' .
          '<pre style="background:#f4f4f4;padding:10px;border:1px solid #ddd;">' .
@@ -53,6 +44,12 @@ if (!$tcpdf_loaded) {
          '</pre>' .
          '<p>If you do not have Composer, download it from: <a href="https://getcomposer.org/download/">https://getcomposer.org/download/</a></p>' .
          '</div>');
+}
+
+require_once __DIR__ . '/../vendor/autoload.php';
+
+if (!class_exists('TCPDF')) {
+    die('TCPDF class could not be loaded. Please run composer install.');
 }
 
 // ================= CREATE PDF =================
@@ -118,14 +115,27 @@ foreach ($items as $item) {
     </tr>';
 }
 
+$discount_amount = (float)($order['discount_amount'] ?? 0);
+$shipping_amount = $order['total_amount'] - $subtotal + $discount_amount;
+
 $html .= '
 <tr>
     <td colspan="4" align="right"><strong>Subtotal</strong></td>
     <td align="center">BDT ' . number_format($subtotal, 2) . '</td>
-</tr>
+</tr>';
+
+if ($discount_amount > 0) {
+    $html .= '
+<tr>
+    <td colspan="4" align="right"><strong>Coupon (' . htmlspecialchars($order['coupon_code']) . ')</strong></td>
+    <td align="center">- BDT ' . number_format($discount_amount, 2) . '</td>
+</tr>';
+}
+
+$html .= '
 <tr>
     <td colspan="4" align="right"><strong>Shipping</strong></td>
-    <td align="center">BDT ' . number_format($order['total_amount'] - $subtotal, 2) . '</td>
+    <td align="center">BDT ' . number_format($shipping_amount, 2) . '</td>
 </tr>
 <tr>
     <td colspan="4" align="right"><strong>Grand Total</strong></td>

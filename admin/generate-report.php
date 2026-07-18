@@ -1,8 +1,14 @@
 <?php
 require_once '../config/database.php';
 require_once '../includes/functions.php';
-require_once '../vendor/tecnickcom/tcpdf/config/tcpdf_config.php';
-require_once '../vendor/tecnickcom/tcpdf/tcpdf.php';
+
+if (file_exists(__DIR__ . '/../vendor/autoload.php')) {
+    require_once __DIR__ . '/../vendor/autoload.php';
+}
+
+if (!class_exists('TCPDF')) {
+    die('TCPDF is not available. Please run composer install in the project root.');
+}
 
 if (!isAdmin()) {
     redirect('login.php');

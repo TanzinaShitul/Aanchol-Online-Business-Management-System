@@ -16,65 +16,8 @@ require_once 'includes/functions.php';
 </head>
 
 <body>
-    <!-- Navigation -->
-    <nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm">
-        <div class="container">
-            <a class="navbar-brand fw-bold text-primary" href="index.php">
-                <img src="images/uploads/logo/logo.png" class="navbar-logo me-2" alt="Aanchol Logo">
-                <span class="navbar-brand-text">আঞ্চল-Aanchol</span>
-            </a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav me-auto">
-                    <li class="nav-item"><a class="nav-link" href="index.php">Home</a></li>
-                    <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="#" id="categoriesDropdown" role="button"
-                            data-bs-toggle="dropdown">
-                            Categories
-                        </a>
-                        <ul class="dropdown-menu">
-                            <?php
-                            $categories = getCategories();
-                            foreach ($categories as $category): ?>
-                                <li><a class="dropdown-item" href="customer/products.php?category=<?= $category['id'] ?>">
-                                        <?= htmlspecialchars($category['name']) ?>
-                                    </a></li>
-                            <?php endforeach; ?>
-                        </ul>
-                    </li>
-                    <li class="nav-item"><a class="nav-link" href="customer/products.php">All Products</a></li>
-                </ul>
-                <div class="d-flex">
-                    <?php if (isLoggedIn()): ?>
-                        <a href="customer/cart.php" class="btn btn-outline-primary me-2">
-                            <i class="fas fa-shopping-cart"></i> Cart
-                            <?php if (isLoggedIn()): ?>
-                                <span class="badge bg-danger cart-count"></span>
-                            <?php endif; ?>
-                        </a>
-                        <div class="dropdown">
-                            <button class="btn btn-outline-secondary dropdown-toggle" type="button"
-                                data-bs-toggle="dropdown">
-                                <i class="fas fa-user"></i> <?= $_SESSION['name'] ?>
-                            </button>
-                            <ul class="dropdown-menu">
-                                <li><a class="dropdown-item" href="customer/order-history.php">My Orders</a></li>
-                                <li>
-                                    <hr class="dropdown-divider">
-                                </li>
-                                <li><a class="dropdown-item" href="customer/logout.php">Logout</a></li>
-                            </ul>
-                        </div>
-                    <?php else: ?>
-                        <a href="customer/login.php" class="btn btn-outline-primary me-2">Login</a>
-                        <a href="customer/register.php" class="btn btn-primary">Register</a>
-                    <?php endif; ?>
-                </div>
-            </div>
-        </div>
-    </nav>
+    <?php $categories = getCategories(); ?>
+    <?php require_once __DIR__ . '/includes/nav.php'; ?>
 
     <!-- Hero Section -->
     <section class="hero-section py-5 bg-light">
@@ -102,16 +45,28 @@ require_once 'includes/functions.php';
                 <?php
                 $products = getProducts();
                 $featured = array_slice($products, 0, 4);
-                foreach ($featured as $product): ?>
+                foreach ($featured as $product):
+                    $pricing = getEffectivePrice($product);
+                ?>
                     <div class="col-md-3 mb-4">
-                        <div class="card product-card h-100">
+                        <div class="card product-card h-100 position-relative">
+                            <?php if ($pricing['has_discount']): ?>
+                                <span class="badge bg-danger position-absolute" style="top:10px; left:10px; z-index:2;">
+                                    -<?= rtrim(rtrim(number_format($pricing['percent'], 2), '0'), '.') ?>%
+                                </span>
+                            <?php endif; ?>
                             <img src="uploads/<?= $product['image'] ?: 'default.jpg' ?>" class="card-img-top"
                                 alt="<?= htmlspecialchars($product['name']) ?>">
                             <div class="card-body">
                                 <h5 class="card-title"><?= htmlspecialchars($product['name']) ?></h5>
                                 <p class="card-text text-muted"><?= substr($product['description'], 0, 60) ?>...</p>
                                 <div class="d-flex justify-content-between align-items-center">
-                                    <span class="h5 text-primary">৳<?= number_format($product['price'], 2) ?></span>
+                                    <span class="h5 text-primary">
+                                        <?php if ($pricing['has_discount']): ?>
+                                            <span class="text-muted text-decoration-line-through small d-block">৳<?= number_format($pricing['original_price'], 2) ?></span>
+                                        <?php endif; ?>
+                                        ৳<?= number_format($pricing['final_price'], 2) ?>
+                                    </span>
                                     <a href="customer/product-details.php?id=<?= $product['id'] ?>"
                                         class="btn btn-sm btn-outline-primary">View Details</a>
                                 </div>
@@ -166,6 +121,8 @@ require_once 'includes/functions.php';
                         <li><a href="index.php" class="text-white text-decoration-none">Home</a></li>
                         <li><a href="customer/products.php" class="text-white text-decoration-none">Products</a></li>
                         <li><a href="customer/order-history.php" class="text-white text-decoration-none">My Orders</a>
+                        </li>
+                        <li><a href="customer/track-order.php" class="text-white text-decoration-none">Track Order</a>
                         </li>
                     </ul>
                 </div>
