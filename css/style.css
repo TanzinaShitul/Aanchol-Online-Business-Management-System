@@ -112,6 +112,10 @@ textarea:focus-visible {
   padding-bottom: 0.85rem;
 }
 
+.navbar-brand {
+  cursor: default;
+}
+
 .navbar-logo {
   width: 38px;
   height: auto;
