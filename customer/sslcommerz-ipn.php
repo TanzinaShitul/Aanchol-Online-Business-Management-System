@@ -23,6 +23,7 @@ $validation = sslcommerzValidateTransaction($_POST['val_id']);
 
 $is_valid = $validation
     && in_array($validation['status'] ?? '', ['VALID', 'VALIDATED'], true)
+    && ($validation['tran_id'] ?? '') === $order['order_number']
     && round((float)$validation['amount'], 2) === round((float)$order['total_amount'], 2);
 
 if ($is_valid && $order['payment_status'] !== 'paid') {

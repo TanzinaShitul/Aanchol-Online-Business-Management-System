@@ -124,8 +124,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 exit();
             }
 
-            $_SESSION['payment_order'] = $new_order['order_number'];
-            redirect('payment-simulate.php?order=' . urlencode($new_order['order_number']) . '&gateway=sslcommerz');
+            $_SESSION['error'] = 'We could not start SSLCommerz payment. Please check your sandbox setup and retry.';
+            redirect('order-details.php?id=' . $new_order['id']);
         }
     } else {
         $error = "Failed to place order. Please try again!";

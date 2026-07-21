@@ -8,6 +8,7 @@ $navRegisterHref = $navBasePath ? 'register.php' : 'customer/register.php';
 $navCartHref = $navBasePath ? 'cart.php' : 'customer/cart.php';
 $navWishlistHref = $navBasePath ? 'wishlist.php' : 'customer/wishlist.php';
 $navOrderHistoryHref = $navBasePath ? 'order-history.php' : 'customer/order-history.php';
+$navAccountHref = $navBasePath ? 'index.php' : 'customer/index.php';
 $navLogoutHref = $navBasePath ? 'logout.php' : 'customer/logout.php';
 $navLogoSrc = $navBasePath ? '../images/uploads/logo/logo.png' : 'images/uploads/logo/logo.png';
 
@@ -71,7 +72,7 @@ $wishlistCount = function_exists('isLoggedIn') && isLoggedIn() && function_exist
                                 <li><a class="dropdown-item" href="admin/dashboard.php">Admin Dashboard</a></li>
                                 <li><hr class="dropdown-divider"></li>
                             <?php else: ?>
-                                <li><a class="dropdown-item" href="<?= htmlspecialchars($navHomeHref) ?>">My Account</a></li>
+                                <li><a class="dropdown-item" href="<?= htmlspecialchars($navAccountHref) ?>">My Account</a></li>
                                 <li><a class="dropdown-item" href="<?= htmlspecialchars($navOrderHistoryHref) ?>">My Orders</a></li>
                                 <li><a class="dropdown-item" href="<?= htmlspecialchars($navWishlistHref) ?>">My Wishlist</a></li>
                                 <li><hr class="dropdown-divider"></li>

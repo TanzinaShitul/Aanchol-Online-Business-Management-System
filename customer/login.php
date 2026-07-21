@@ -17,7 +17,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $_SESSION['email'] = $user['email'];
         $_SESSION['role'] = $user['role'];
         
-        redirect('../index.php');
+        redirect('index.php');
     } else {
         $error = "Invalid email or password!";
     }

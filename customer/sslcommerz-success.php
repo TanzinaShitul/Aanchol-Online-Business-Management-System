@@ -20,6 +20,7 @@ $validation = sslcommerzValidateTransaction($val_id);
 
 $is_valid = $validation
     && in_array($validation['status'] ?? '', ['VALID', 'VALIDATED'], true)
+    && ($validation['tran_id'] ?? '') === $order['order_number']
     && round((float)$validation['amount'], 2) === round((float)$order['total_amount'], 2)
     && strtoupper($validation['currency'] ?? '') === 'BDT';
 
@@ -37,9 +38,12 @@ if ($is_valid) {
     addTrackingEvent($order['id'], $order['status'], null, 'SSLCommerz payment received (ref: ' . $reference . ').');
     $_SESSION['order_success'] = $order['order_number'];
     redirect('order-success.php');
-} else {
+} elseif ($validation) {
     updatePaymentStatus($order['id'], 'failed', null);
     $_SESSION['error'] = "We couldn't verify your payment with SSLCommerz. Please try again or contact support.";
+    redirect('order-details.php?id=' . $order['id']);
+} else {
+    $_SESSION['error'] = "We couldn't confirm the payment yet. Your order remains unpaid; please check again shortly.";
     redirect('order-details.php?id=' . $order['id']);
 }
 ?>

@@ -1,0 +1,15 @@
+<?php
+/**
+ * Copy this file to sslcommerz.local.php and enter the credentials supplied
+ * for your SSLCommerz sandbox store. The local file is intentionally ignored
+ * by Git, so it will not be committed.
+ */
+return [
+    'store_id' => 'aanch6a5ef88b7ae07',
+    'store_password' => 'aanch6a5ef88b7ae07@ssl',
+    'is_sandbox' => true,
+
+    // Required when testing from a public URL (for example an HTTPS tunnel).
+    // Leave empty to detect the current site URL automatically.
+    'base_url' => '',
+];

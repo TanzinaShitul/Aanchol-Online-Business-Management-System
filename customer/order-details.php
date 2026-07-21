@@ -80,7 +80,7 @@ $can_download_invoice = ($order['payment_method'] !== 'Cash on Delivery' && $ord
                     <i class="fas fa-exclamation-triangle"></i>
                     Payment for this order is <strong><?= htmlspecialchars($order['payment_status']) ?></strong>.
                 </span>
-                <a href="payment-simulate.php?order=<?= urlencode($order['order_number']) ?>" class="btn btn-sm btn-primary">
+                <a href="retry-payment.php?order=<?= urlencode($order['order_number']) ?>" class="btn btn-sm btn-primary">
                     <i class="fas fa-credit-card"></i> Retry Payment
                 </a>
             </div>

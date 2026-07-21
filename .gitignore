@@ -1,0 +1,2 @@
+# Local payment credentials. Keep this file on the server only.
+config/sslcommerz.local.php

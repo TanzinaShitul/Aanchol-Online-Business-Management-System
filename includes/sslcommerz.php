@@ -8,8 +8,14 @@ require_once __DIR__ . '/../config/sslcommerz.php';
  * (e.g. /customer/checkout.php -> base is /project-root).
  */
 function sslcommerzBaseUrl() {
+    if (SSLCZ_BASE_URL !== '') {
+        return SSLCZ_BASE_URL;
+    }
     $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https://' : 'http://';
-    $host = $_SERVER['HTTP_HOST'];
+    $host = $_SERVER['HTTP_HOST'] ?? '';
+    if ($host === '') {
+        throw new RuntimeException('Unable to determine the SSLCommerz callback URL.');
+    }
     $script_dir = dirname($_SERVER['SCRIPT_NAME']); // e.g. /aanchol/customer
     $base = dirname($script_dir);                   // e.g. /aanchol
     $base = ($base === '.' || $base === DIRECTORY_SEPARATOR) ? '' : $base;
@@ -24,8 +30,11 @@ function sslcommerzBaseUrl() {
  * (look for $response['status'] === 'SUCCESS' and $response['GatewayPageURL']).
  */
 function sslcommerzInitSession($order, $customer) {
+    if (SSLCZ_STORE_ID === '' || SSLCZ_STORE_PASSWORD === '') {
+        return ['status' => 'FAILED', 'failedreason' => 'SSLCommerz sandbox credentials are not configured.'];
+    }
+
     $base_url = sslcommerzBaseUrl();
-    $fallbackGatewayUrl = $base_url . '/customer/payment-simulate.php?order=' . urlencode($order['order_number']) . '&gateway=sslcommerz';
 
     $post_data = [
         'store_id'      => SSLCZ_STORE_ID,
@@ -66,19 +75,11 @@ function sslcommerzInitSession($order, $customer) {
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
     curl_setopt($ch, CURLOPT_POST, 1);
     curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($post_data));
-    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false); // sandbox convenience
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 2);
     $response = curl_exec($ch);
     $curl_error = curl_error($ch);
     curl_close($ch);
-
-    if ($response === false) {
-        return [
-            'status' => 'SUCCESS',
-            'GatewayPageURL' => $fallbackGatewayUrl,
-            'dummy' => true,
-            'failedreason' => 'Sandbox network unavailable. Using local dummy payment screen.'
-        ];
-    }
 
     $result = json_decode($response, true);
     if (is_array($result) && ($result['status'] ?? '') === 'SUCCESS' && !empty($result['GatewayPageURL'])) {
@@ -86,10 +87,8 @@ function sslcommerzInitSession($order, $customer) {
     }
 
     return [
-        'status' => 'SUCCESS',
-        'GatewayPageURL' => $fallbackGatewayUrl,
-        'dummy' => true,
-        'failedreason' => $curl_error ?: 'Sandbox response unavailable. Using local dummy payment screen.'
+        'status' => 'FAILED',
+        'failedreason' => $curl_error ?: ($result['failedreason'] ?? 'SSLCommerz did not create a payment session.'),
     ];
 }
 
@@ -109,7 +108,8 @@ function sslcommerzValidateTransaction($val_id) {
     curl_setopt($ch, CURLOPT_URL, $url);
     curl_setopt($ch, CURLOPT_TIMEOUT, 30);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 2);
     $response = curl_exec($ch);
     curl_close($ch);
 
