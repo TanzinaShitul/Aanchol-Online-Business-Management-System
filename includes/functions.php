@@ -640,14 +640,129 @@ function establishUserSession($user_id) {
    PAYMENT GATEWAY (simulated)
    ========================================================================= */
 
-function updatePaymentStatus($order_id, $status, $reference = null) {
+function updatePaymentStatus($order_id, $status, $reference = null, $payment_method = null) {
     global $conn;
-    $sql = "UPDATE orders SET payment_status = :status, payment_reference = :reference WHERE id = :id";
+    $sql = "UPDATE orders
+            SET payment_status = :status,
+                payment_reference = :reference,
+                payment_method = COALESCE(:payment_method, payment_method)
+            WHERE id = :id";
     $stmt = $conn->prepare($sql);
     $stmt->bindParam(':status', $status);
     $stmt->bindParam(':reference', $reference);
+    $stmt->bindParam(':payment_method', $payment_method);
     $stmt->bindParam(':id', $order_id);
     return $stmt->execute();
+}
+
+/**
+ * Return a display name for the payment gateway confirmed by SSLCommerz.
+ * This must only be called with data returned by the Validation API, never
+ * directly with browser POST data.
+ */
+function sslcommerzPaymentMethod(array $validation) {
+    $gateway = trim((string)($validation['card_type'] ?? ''));
+    $normalized = strtolower(preg_replace('/[^a-z0-9]/i', '', $gateway));
+
+    $known_gateways = [
+        'bkash' => 'bKash',
+        'nagad' => 'Nagad',
+        'rocket' => 'Rocket',
+        'dbblmobilebanking' => 'DBBL Mobile Banking',
+        'upay' => 'Upay',
+        'tapnpay' => 'Tap N Pay',
+    ];
+
+    if (isset($known_gateways[$normalized])) {
+        return $known_gateways[$normalized];
+    }
+
+    if ($gateway !== '') {
+        return 'SSLCommerz - ' . substr($gateway, 0, 40);
+    }
+
+    return 'SSLCommerz';
+}
+
+/**
+ * Cancel an unpaid online-payment order and put its items back in the
+ * customer's cart. This lets the customer return to checkout after a failed
+ * or cancelled gateway payment without losing stock, cart items, or a coupon.
+ */
+function restoreFailedOnlineOrder($order_id) {
+    global $conn;
+
+    try {
+        $conn->beginTransaction();
+
+        $stmt = $conn->prepare('SELECT * FROM orders WHERE id = :id FOR UPDATE');
+        $stmt->execute([':id' => $order_id]);
+        $order = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$order || $order['payment_status'] === 'paid') {
+            $conn->rollBack();
+            return false;
+        }
+
+        // A gateway can repeat a failure callback. The first callback has
+        // already restored the cart and stock, so do not restore twice.
+        if ($order['status'] === 'cancelled') {
+            $conn->commit();
+            return true;
+        }
+
+        $stmt = $conn->prepare('SELECT product_id, quantity, size FROM order_items WHERE order_id = :order_id');
+        $stmt->execute([':order_id' => $order_id]);
+        $items = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        foreach ($items as $item) {
+            $size = $item['size'] === null ? '' : (string)$item['size'];
+            $cart_stmt = $conn->prepare("SELECT id FROM cart WHERE user_id = :user_id AND product_id = :product_id AND COALESCE(size, '') = :size FOR UPDATE");
+            $cart_stmt->execute([
+                ':user_id' => $order['user_id'],
+                ':product_id' => $item['product_id'],
+                ':size' => $size,
+            ]);
+            $cart_item = $cart_stmt->fetch(PDO::FETCH_ASSOC);
+
+            if ($cart_item) {
+                $cart_stmt = $conn->prepare('UPDATE cart SET quantity = quantity + :quantity WHERE id = :id');
+                $cart_stmt->execute([':quantity' => $item['quantity'], ':id' => $cart_item['id']]);
+            } else {
+                $cart_stmt = $conn->prepare('INSERT INTO cart (user_id, product_id, quantity, size) VALUES (:user_id, :product_id, :quantity, :size)');
+                $cart_stmt->execute([
+                    ':user_id' => $order['user_id'],
+                    ':product_id' => $item['product_id'],
+                    ':quantity' => $item['quantity'],
+                    ':size' => $item['size'],
+                ]);
+            }
+
+            $stock_stmt = $conn->prepare('UPDATE products SET stock = stock + :quantity WHERE id = :product_id');
+            $stock_stmt->execute([':quantity' => $item['quantity'], ':product_id' => $item['product_id']]);
+        }
+
+        // Release the coupon reservation made when the unsuccessful order was created.
+        $coupon_stmt = $conn->prepare('SELECT coupon_id FROM coupon_usage WHERE order_id = :order_id');
+        $coupon_stmt->execute([':order_id' => $order_id]);
+        $coupon_usage = $coupon_stmt->fetch(PDO::FETCH_ASSOC);
+        if ($coupon_usage) {
+            $conn->prepare('DELETE FROM coupon_usage WHERE order_id = :order_id')->execute([':order_id' => $order_id]);
+            $conn->prepare('UPDATE coupons SET used_count = GREATEST(used_count - 1, 0) WHERE id = :id')->execute([':id' => $coupon_usage['coupon_id']]);
+        }
+
+        $stmt = $conn->prepare("UPDATE orders SET payment_status = 'failed', status = 'cancelled', payment_reference = NULL WHERE id = :id");
+        $stmt->execute([':id' => $order_id]);
+        addTrackingEvent($order_id, 'cancelled', null, 'Online payment was not completed; cart restored for checkout retry.');
+
+        $conn->commit();
+        return true;
+    } catch (Exception $e) {
+        if ($conn->inTransaction()) {
+            $conn->rollBack();
+        }
+        return false;
+    }
 }
 
 function generateFakeTransactionId($prefix = 'TXN') {

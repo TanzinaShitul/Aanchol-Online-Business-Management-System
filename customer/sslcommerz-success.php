@@ -34,8 +34,9 @@ if (!isLoggedIn() || $_SESSION['user_id'] != $order['user_id']) {
 
 if ($is_valid) {
     $reference = $validation['bank_tran_id'] ?? $val_id;
-    updatePaymentStatus($order['id'], 'paid', $reference);
-    addTrackingEvent($order['id'], $order['status'], null, 'SSLCommerz payment received (ref: ' . $reference . ').');
+    $payment_method = sslcommerzPaymentMethod($validation);
+    updatePaymentStatus($order['id'], 'paid', $reference, $payment_method);
+    addTrackingEvent($order['id'], $order['status'], null, $payment_method . ' payment received (ref: ' . $reference . ').');
     $_SESSION['order_success'] = $order['order_number'];
     redirect('order-success.php');
 } elseif ($validation) {

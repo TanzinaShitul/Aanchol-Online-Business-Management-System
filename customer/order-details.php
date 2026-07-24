@@ -115,6 +115,12 @@ $can_download_invoice = ($order['payment_method'] !== 'Cash on Delivery' && $ord
                                     </span>
                                 </td>
                             </tr>
+                            <?php if (!empty($order['payment_reference'])): ?>
+                            <tr>
+                                <th>Payment Reference:</th>
+                                <td><?= htmlspecialchars($order['payment_reference']) ?></td>
+                            </tr>
+                            <?php endif; ?>
                             <?php if (!empty($order['coupon_code'])): ?>
                             <tr>
                                 <th>Coupon Used:</th>

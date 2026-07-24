@@ -90,6 +90,9 @@ $html = '
     <td colspan="2"><strong>Payment Status:</strong> ' . ucfirst($order['payment_status']) . '</td>
 </tr>
 <tr>
+    <td colspan="2"><strong>Payment Reference:</strong> ' . (!empty($order['payment_reference']) ? htmlspecialchars($order['payment_reference']) : 'N/A') . '</td>
+</tr>
+<tr>
     <td colspan="2"><strong>Paid Amount:</strong> BDT ' . number_format((float)$order['total_amount'], 2) . '</td>
 </tr>
 <tr>

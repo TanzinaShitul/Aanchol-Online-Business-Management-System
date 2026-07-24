@@ -28,8 +28,9 @@ $is_valid = $validation
 
 if ($is_valid && $order['payment_status'] !== 'paid') {
     $reference = $validation['bank_tran_id'] ?? $_POST['val_id'];
-    updatePaymentStatus($order['id'], 'paid', $reference);
-    addTrackingEvent($order['id'], $order['status'], null, 'Payment confirmed via SSLCommerz IPN (ref: ' . $reference . ').');
+    $payment_method = sslcommerzPaymentMethod($validation);
+    updatePaymentStatus($order['id'], 'paid', $reference, $payment_method);
+    addTrackingEvent($order['id'], $order['status'], null, $payment_method . ' payment confirmed via SSLCommerz IPN (ref: ' . $reference . ').');
 }
 
 http_response_code(200);

@@ -10,7 +10,15 @@ if ($tran_id) {
         if (!isLoggedIn() || $_SESSION['user_id'] != $order['user_id']) {
             establishUserSession($order['user_id']);
         }
-        $_SESSION['error'] = "Payment was cancelled. You can retry anytime from your order details.";
+        if (restoreFailedOnlineOrder($order['id'])) {
+            if (!empty($order['coupon_code'])) {
+                $_SESSION['coupon_code'] = $order['coupon_code'];
+            }
+            $_SESSION['error'] = 'Payment was cancelled. Your cart has been restored; you can complete checkout when ready.';
+            redirect('checkout.php');
+        }
+
+        $_SESSION['error'] = 'We could not restore your checkout after the cancelled payment. Please contact support.';
         redirect('order-details.php?id=' . $order['id']);
     }
 }

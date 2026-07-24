@@ -47,13 +47,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
     $payment_map = [
         'cod'    => 'Cash on Delivery',
-        'bkash'  => 'bKash',
-        'nagad'  => 'Nagad',
-        'rocket' => 'Rocket',
-        'card'   => 'Card',
-        'online' => 'SSLCommerz',
+        'online' => 'Online Payment',
     ];
     $payment_choice = $_POST['payment_method'] ?? 'cod';
+    if (!array_key_exists($payment_choice, $payment_map)) {
+        $payment_choice = 'cod';
+    }
     $payment_method = $payment_map[$payment_choice] ?? 'Cash on Delivery';
     
     // Get location names to include in address
@@ -124,8 +123,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 exit();
             }
 
-            $_SESSION['error'] = 'We could not start SSLCommerz payment. Please check your sandbox setup and retry.';
-            redirect('order-details.php?id=' . $new_order['id']);
+            restoreFailedOnlineOrder($new_order['id']);
+            if (!empty($new_order['coupon_code'])) {
+                $_SESSION['coupon_code'] = $new_order['coupon_code'];
+            }
+            $_SESSION['error'] = 'We could not start SSLCommerz payment. Your cart has been restored; please check the sandbox setup and try again.';
+            redirect('checkout.php');
         }
     } else {
         $error = "Failed to place order. Please try again!";
@@ -149,6 +152,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     <div class="container mt-4 mb-5">
         <h1 class="mb-4">Checkout</h1>
         
+        <?php if (isset($_SESSION['error'])): ?>
+            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                <?= htmlspecialchars($_SESSION['error']) ?>
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+            <?php unset($_SESSION['error']); ?>
+        <?php endif; ?>
+
         <?php if (isset($error)): ?>
             <div class="alert alert-danger"><?= $error ?></div>
         <?php endif; ?>
@@ -250,31 +261,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                                         </label>
                                     </div>
                                     <div class="form-check mb-2">
-                                        <input class="form-check-input" type="radio" name="payment_method" id="bkash" value="bkash">
-                                        <label class="form-check-label" for="bkash">
-                                            <strong style="color:#E2136E;">bKash</strong>
-                                            <small class="text-muted d-block">Pay via bKash (sandbox)</small>
-                                        </label>
-                                    </div>
-                                    <div class="form-check mb-2">
-                                        <input class="form-check-input" type="radio" name="payment_method" id="nagad" value="nagad">
-                                        <label class="form-check-label" for="nagad">
-                                            <strong style="color:#EC1D25;">Nagad</strong>
-                                            <small class="text-muted d-block">Pay via Nagad (sandbox)</small>
-                                        </label>
-                                    </div>
-                                    <div class="form-check mb-2">
-                                        <input class="form-check-input" type="radio" name="payment_method" id="rocket" value="rocket">
-                                        <label class="form-check-label" for="rocket">
-                                            <strong style="color:#8C3494;">Rocket</strong>
-                                            <small class="text-muted d-block">Pay via Rocket (sandbox)</small>
-                                        </label>
-                                    </div>
-                                    <div class="form-check mb-2">
-                                        <input class="form-check-input" type="radio" name="payment_method" id="card" value="card">
-                                        <label class="form-check-label" for="card">
-                                            <strong>Card</strong>
-                                            <small class="text-muted d-block">Pay via card (sandbox)</small>
+                                        <input class="form-check-input" type="radio" name="payment_method" id="online" value="online">
+                                        <label class="form-check-label" for="online">
+                                            <strong>Pay Online</strong>
+                                            <small class="text-muted d-block">Choose bKash, Nagad, card, or another available method on the secure payment page</small>
                                         </label>
                                     </div>
                                     <div class="alert alert-warning mt-3 mb-0 small">
