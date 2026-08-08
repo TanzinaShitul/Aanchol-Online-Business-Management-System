@@ -692,6 +692,19 @@ function sslcommerzPaymentMethod(array $validation) {
 function restoreFailedOnlineOrder($order_id) {
     global $conn;
 
+    // A dropped MySQL connection can make both inTransaction() and rollBack()
+    // throw. Cleanup must never mask the original failure or break the payment
+    // gateway's cancel callback.
+    $rollbackTransaction = function () use ($conn) {
+        try {
+            if ($conn->inTransaction()) {
+                $conn->rollBack();
+            }
+        } catch (Throwable $rollbackException) {
+            error_log('Unable to roll back failed online order transaction: ' . $rollbackException->getMessage());
+        }
+    };
+
     try {
         $conn->beginTransaction();
 
@@ -700,7 +713,7 @@ function restoreFailedOnlineOrder($order_id) {
         $order = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if (!$order || $order['payment_status'] === 'paid') {
-            $conn->rollBack();
+            $rollbackTransaction();
             return false;
         }
 
@@ -757,10 +770,9 @@ function restoreFailedOnlineOrder($order_id) {
 
         $conn->commit();
         return true;
-    } catch (Exception $e) {
-        if ($conn->inTransaction()) {
-            $conn->rollBack();
-        }
+    } catch (Throwable $e) {
+        $rollbackTransaction();
+        error_log('Failed to restore cancelled online order ' . (int) $order_id . ': ' . $e->getMessage());
         return false;
     }
 }
@@ -885,7 +897,8 @@ function getSalesReport($month, $year) {
             (SELECT COUNT(*) FROM order_items WHERE order_id = o.id) as item_count
             FROM orders o 
             JOIN users u ON o.user_id = u.id 
-            WHERE MONTH(o.order_date) = :month AND YEAR(o.order_date) = :year 
+            WHERE MONTH(o.order_date) = :month AND YEAR(o.order_date) = :year
+              AND o.status <> 'cancelled'
             ORDER BY o.order_date DESC";
     $stmt = $conn->prepare($sql);
     $stmt->bindParam(':month', $month);
@@ -897,7 +910,8 @@ function getSalesReport($month, $year) {
 function getTotalSales($month, $year) {
     global $conn;
     $sql = "SELECT SUM(total_amount) as total FROM orders 
-            WHERE MONTH(order_date) = :month AND YEAR(order_date) = :year";
+            WHERE MONTH(order_date) = :month AND YEAR(order_date) = :year
+              AND status <> 'cancelled'";
     $stmt = $conn->prepare($sql);
     $stmt->bindParam(':month', $month);
     $stmt->bindParam(':year', $year);

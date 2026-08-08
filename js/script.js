@@ -22,8 +22,9 @@ function checkStock(productId, requestedQty) {
 }
 
 // Form validation
-function validateForm(formId) {
-    const form = document.getElementById(formId);
+function validateForm(formOrId) {
+    const form = typeof formOrId === 'string' ? document.getElementById(formOrId) : formOrId;
+    if (!form) return true;
     const inputs = form.querySelectorAll('input[required], select[required], textarea[required]');
     
     let isValid = true;
@@ -41,6 +42,51 @@ function validateForm(formId) {
 
 // Initialize when page loads
 document.addEventListener('DOMContentLoaded', function() {
+    // Shared header controls. These do not depend on the Bootstrap CDN, so the
+    // category and account menus remain usable on every customer page.
+    const closeNavigationDropdowns = function(except) {
+        document.querySelectorAll('[data-nav-dropdown]').forEach(function(toggle) {
+            if (toggle !== except) {
+                toggle.setAttribute('aria-expanded', 'false');
+                toggle.parentElement.querySelector('.dropdown-menu')?.classList.remove('show');
+            }
+        });
+    };
+
+    document.querySelectorAll('[data-nav-dropdown]').forEach(function(toggle) {
+        toggle.addEventListener('click', function(event) {
+            event.preventDefault();
+            const menu = this.parentElement.querySelector('.dropdown-menu');
+            if (!menu) return;
+
+            const isOpen = menu.classList.contains('show');
+            closeNavigationDropdowns(this);
+            menu.classList.toggle('show', !isOpen);
+            this.setAttribute('aria-expanded', String(!isOpen));
+        });
+    });
+
+    const navigationToggler = document.querySelector('[data-nav-collapse]');
+    if (navigationToggler) {
+        navigationToggler.addEventListener('click', function() {
+            const menu = document.getElementById(this.dataset.navCollapse);
+            if (!menu) return;
+
+            const isOpen = menu.classList.toggle('show');
+            this.setAttribute('aria-expanded', String(isOpen));
+        });
+    }
+
+    document.addEventListener('click', function(event) {
+        if (!event.target.closest('.navbar .dropdown')) {
+            closeNavigationDropdowns();
+        }
+    });
+
+    document.addEventListener('keydown', function(event) {
+        if (event.key === 'Escape') closeNavigationDropdowns();
+    });
+
     // Update cart count if user is logged in
     if (document.querySelector('.cart-count')) {
         updateCartCount();
@@ -50,7 +96,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Form validation
     document.querySelectorAll('form').forEach(form => {
         form.addEventListener('submit', function(e) {
-            if (!validateForm(this.id)) {
+            if (!validateForm(this)) {
                 e.preventDefault();
                 alert('Please fill all required fields!');
             }
@@ -71,7 +117,10 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 // Password visibility toggle functionality
-document.getElementById('togglePassword').addEventListener('click', function() {
+const passwordToggle = document.getElementById('togglePassword');
+
+if (passwordToggle) {
+    passwordToggle.addEventListener('click', function() {
     const passwordInput = document.getElementById('password');
     const toggleIcon = this.querySelector('i');
     
@@ -84,4 +133,5 @@ document.getElementById('togglePassword').addEventListener('click', function() {
         toggleIcon.classList.remove('fa-eye-slash');
         toggleIcon.classList.add('fa-eye');
     }
-});
+    });
+}

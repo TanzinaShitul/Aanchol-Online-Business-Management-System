@@ -35,8 +35,15 @@ if ($status === 'success') {
     $_SESSION['order_success'] = $order['order_number'];
     redirect('order-success.php');
 } else {
-    updatePaymentStatus($order['id'], 'failed', null);
-    $_SESSION['error'] = 'Payment failed. You can retry payment or contact support.';
+    if (restoreFailedOnlineOrder($order['id'])) {
+        if (!empty($order['coupon_code'])) {
+            $_SESSION['coupon_code'] = $order['coupon_code'];
+        }
+        $_SESSION['error'] = 'Payment was not completed. Your cart has been restored; please try checkout again.';
+        redirect('checkout.php');
+    }
+
+    $_SESSION['error'] = 'We could not restore your cart after the failed payment. Please contact support.';
     redirect('order-details.php?id=' . $order['id']);
 }
 ?>

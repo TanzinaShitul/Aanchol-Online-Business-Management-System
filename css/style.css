@@ -110,10 +110,14 @@ textarea:focus-visible {
   border-bottom: 1px solid var(--color-border);
   padding-top: 0.85rem;
   padding-bottom: 0.85rem;
+  position: relative;
+  z-index: 1030;
 }
 
+.navbar .dropdown-menu { z-index: 1040; }
+
 .navbar-brand {
-  cursor: default;
+  cursor: pointer;
 }
 
 .navbar-logo {

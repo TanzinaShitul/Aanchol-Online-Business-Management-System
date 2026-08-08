@@ -16,7 +16,7 @@ $order_id = $_GET['id'];
 $sql = "SELECT o.*, u.name as customer_name, u.email, u.phone 
         FROM orders o 
         JOIN users u ON o.user_id = u.id 
-        WHERE o.id = :id";
+        WHERE o.id = :id AND (o.payment_method = 'Cash on Delivery' OR o.payment_status = 'paid')";
 $stmt = $conn->prepare($sql);
 $stmt->bindParam(':id', $order_id);
 $stmt->execute();
@@ -44,19 +44,28 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['update_status'])) {
     $location = trim($_POST['location'] ?? '');
     $note = trim($_POST['note'] ?? '');
 
-    $sql = "UPDATE orders SET status = :status, courier_name = :courier_name, tracking_number = :tracking_number WHERE id = :id";
-    $stmt = $conn->prepare($sql);
-    $stmt->bindParam(':status', $status);
-    $stmt->bindParam(':courier_name', $courier_name);
-    $stmt->bindParam(':tracking_number', $tracking_number);
-    $stmt->bindParam(':id', $order_id);
-    
-    if ($stmt->execute()) {
-        addTrackingEvent($order_id, $status, $location ?: null, $note ?: null);
-        $_SESSION['success'] = "Order status updated successfully!";
-        redirect("order-details.php?id=$order_id");
-    } else {
-        $error = "Failed to update order status!";
+    $valid_statuses = ['pending', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled'];
+    if (!in_array($status, $valid_statuses, true)) {
+        $error = 'Invalid status selected.';
+    } elseif ($status === 'cancelled' && $order['payment_method'] !== 'Cash on Delivery' && $order['payment_status'] === 'paid') {
+        $error = 'A paid online order cannot be cancelled.';
+    }
+
+    if (!isset($error)) {
+        $sql = "UPDATE orders SET status = :status, courier_name = :courier_name, tracking_number = :tracking_number WHERE id = :id";
+        $stmt = $conn->prepare($sql);
+        $stmt->bindParam(':status', $status);
+        $stmt->bindParam(':courier_name', $courier_name);
+        $stmt->bindParam(':tracking_number', $tracking_number);
+        $stmt->bindParam(':id', $order_id);
+
+        if ($stmt->execute()) {
+            addTrackingEvent($order_id, $status, $location ?: null, $note ?: null);
+            $_SESSION['success'] = "Order status updated successfully!";
+            redirect("order-details.php?id=$order_id");
+        } else {
+            $error = "Failed to update order status!";
+        }
     }
 }
 
@@ -250,7 +259,9 @@ $tracking_events = getTrackingEvents($order_id);
                                         <option value="processing" <?= ($order['status'] == 'processing') ? 'selected' : '' ?>>Processing</option>
                                         <option value="shipped" <?= ($order['status'] == 'shipped') ? 'selected' : '' ?>>Shipped</option>
                                         <option value="delivered" <?= ($order['status'] == 'delivered') ? 'selected' : '' ?>>Delivered</option>
-                                        <option value="cancelled" <?= ($order['status'] == 'cancelled') ? 'selected' : '' ?>>Cancelled</option>
+                                        <?php if ($order['payment_method'] === 'Cash on Delivery' || $order['payment_status'] !== 'paid'): ?>
+                                            <option value="cancelled" <?= ($order['status'] == 'cancelled') ? 'selected' : '' ?>>Cancelled</option>
+                                        <?php endif; ?>
                                     </select>
                                 </div>
                                 <div class="col-md-4 mb-3">

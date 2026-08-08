@@ -16,6 +16,22 @@ if (isset($_POST['update_status'])) {
         $_SESSION['error'] = "Invalid status selected!";
         redirect('orders.php');
     }
+
+    // Failed/cancelled online-payment attempts are not admin orders. Also,
+    // an online order that has been paid may not be cancelled by an admin.
+    $order_stmt = $conn->prepare("SELECT payment_method, payment_status FROM orders WHERE id = :id AND (payment_method = 'Cash on Delivery' OR payment_status = 'paid')");
+    $order_stmt->execute([':id' => $order_id]);
+    $order_for_update = $order_stmt->fetch(PDO::FETCH_ASSOC);
+    if (!$order_for_update) {
+        $_SESSION['error'] = 'Order not found.';
+        redirect('orders.php');
+    }
+    if ($status === 'cancelled'
+        && $order_for_update['payment_method'] !== 'Cash on Delivery'
+        && $order_for_update['payment_status'] === 'paid') {
+        $_SESSION['error'] = 'A paid online order cannot be cancelled.';
+        redirect('orders.php');
+    }
     
     $sql = "UPDATE orders SET status = :status WHERE id = :id";
     $stmt = $conn->prepare($sql);
@@ -34,17 +50,19 @@ if (isset($_POST['update_status'])) {
 
 // Get all orders
 $sql = "SELECT o.*, u.name as customer_name FROM orders o 
-        JOIN users u ON o.user_id = u.id 
+        JOIN users u ON o.user_id = u.id
+        WHERE o.payment_method = 'Cash on Delivery' OR o.payment_status = 'paid'
         ORDER BY o.order_date DESC";
 $stmt = $conn->query($sql);
 $orders = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Get statistics
+$admin_order_filter = "(payment_method = 'Cash on Delivery' OR payment_status = 'paid')";
 $sql = "SELECT 
-        (SELECT COUNT(*) FROM orders) as total_orders,
-        (SELECT COUNT(*) FROM orders WHERE status = 'pending') as pending_orders,
-        (SELECT COUNT(*) FROM orders WHERE status = 'delivered') as delivered_orders,
-        (SELECT SUM(total_amount) FROM orders WHERE MONTH(order_date) = MONTH(CURDATE())) as monthly_revenue";
+        (SELECT COUNT(*) FROM orders WHERE $admin_order_filter) as total_orders,
+        (SELECT COUNT(*) FROM orders WHERE $admin_order_filter AND status = 'pending') as pending_orders,
+        (SELECT COUNT(*) FROM orders WHERE $admin_order_filter AND status = 'delivered') as delivered_orders,
+        (SELECT SUM(total_amount) FROM orders WHERE $admin_order_filter AND status <> 'cancelled' AND MONTH(order_date) = MONTH(CURDATE())) as monthly_revenue";
 $stmt = $conn->query($sql);
 $stats = $stmt->fetch(PDO::FETCH_ASSOC);
 ?>
@@ -195,7 +213,9 @@ $stats = $stmt->fetch(PDO::FETCH_ASSOC);
                                                                 <option value="processing" <?= ($order['status'] == 'processing') ? 'selected' : '' ?>>Processing</option>
                                                                 <option value="shipped" <?= ($order['status'] == 'shipped') ? 'selected' : '' ?>>Shipped</option>
                                                                 <option value="delivered" <?= ($order['status'] == 'delivered') ? 'selected' : '' ?>>Delivered</option>
-                                                                <option value="cancelled" <?= ($order['status'] == 'cancelled') ? 'selected' : '' ?>>Cancelled</option>
+                                                                <?php if ($order['payment_method'] === 'Cash on Delivery' || $order['payment_status'] !== 'paid'): ?>
+                                                                    <option value="cancelled" <?= ($order['status'] == 'cancelled') ? 'selected' : '' ?>>Cancelled</option>
+                                                                <?php endif; ?>
                                                             </select>
                                                         </div>
                                                     </div>

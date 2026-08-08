@@ -7,6 +7,23 @@ if (!isLoggedIn()) {
     redirect('login.php');
 }
 
+// A checkout page must never be served from browser history after an order
+// attempt. Otherwise the browser can re-submit its old POST when the customer
+// presses Back from the payment gateway.
+header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+header('Pragma: no-cache');
+header('Expires: 0');
+
+if (empty($_SESSION['checkout_token'])) {
+    $_SESSION['checkout_token'] = bin2hex(random_bytes(32));
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST'
+    && (!isset($_POST['checkout_token']) || !hash_equals($_SESSION['checkout_token'], $_POST['checkout_token']))) {
+    $_SESSION['error'] = 'This checkout form has already been used. Your cart is unchanged; please submit the current form.';
+    redirect('checkout.php');
+}
+
 // Check if cart is empty
 $cart_items = getCartItems($_SESSION['user_id']);
 if (count($cart_items) == 0) {
@@ -38,6 +55,9 @@ if (!empty($_SESSION['coupon_code'])) {
 
 // Handle checkout
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+    // Consume the token before creating an order. A stale browser-history
+    // POST therefore cannot clear a cart or create a duplicate order.
+    unset($_SESSION['checkout_token']);
     $division_id = $_POST['division'];
     $district_id = $_POST['district'];
     $upazila_id = $_POST['upazila'];
@@ -134,6 +154,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $error = "Failed to place order. Please try again!";
     }
 }
+
+// If order creation failed without redirecting, render a fresh one-time form.
+if (empty($_SESSION['checkout_token'])) {
+    $_SESSION['checkout_token'] = bin2hex(random_bytes(32));
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -172,6 +197,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     </div>
                     <div class="card-body">
                         <form method="POST">
+                            <input type="hidden" name="checkout_token" value="<?= htmlspecialchars($_SESSION['checkout_token']) ?>">
                             <div class="row">
                                 <div class="col-md-6 mb-3">
                                     <label for="name" class="form-label">Full Name</label>

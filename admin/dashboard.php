@@ -9,12 +9,17 @@ if (!isAdmin()) {
     redirect('login.php');
 }
 
+// Keep dashboard order metrics aligned with the orders management page.
+// Unpaid online-payment attempts are excluded, while cancelled orders remain
+// visible in total counts but never contribute to monthly sales figures.
+$admin_order_filter = "(payment_method = 'Cash on Delivery' OR payment_status = 'paid')";
+
 // Get statistics
 $sql = "SELECT 
         (SELECT COUNT(*) FROM products) as total_products,
-        (SELECT COUNT(*) FROM orders WHERE MONTH(order_date) = MONTH(CURDATE())) as monthly_orders,
-        (SELECT SUM(total_amount) FROM orders WHERE MONTH(order_date) = MONTH(CURDATE())) as monthly_revenue,
-        (SELECT COUNT(*) FROM orders WHERE status = 'pending') as pending_orders";
+        (SELECT COUNT(*) FROM orders WHERE $admin_order_filter AND status <> 'cancelled' AND MONTH(order_date) = MONTH(CURDATE())) as monthly_orders,
+        (SELECT SUM(total_amount) FROM orders WHERE $admin_order_filter AND status <> 'cancelled' AND MONTH(order_date) = MONTH(CURDATE())) as monthly_revenue,
+        (SELECT COUNT(*) FROM orders WHERE $admin_order_filter AND status = 'pending') as pending_orders";
 
 $stmt = $conn->query($sql);
 $stats = $stmt->fetch(PDO::FETCH_ASSOC);

@@ -498,3 +498,102 @@ INSERT INTO categories (name, slug) VALUES
 ('Panjabi', 'panjabi'),
 ('Dress', 'dress'),
 ('Bags', 'bags');
+
+
+CREATE TABLE coupons (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    code VARCHAR(50) UNIQUE NOT NULL,
+    discount_type ENUM('percentage', 'fixed') NOT NULL DEFAULT 'percentage',
+    discount_value DECIMAL(10,2) NOT NULL,
+    min_order_amount DECIMAL(10,2) DEFAULT 0,
+    max_discount_amount DECIMAL(10,2) DEFAULT NULL,
+    usage_limit INT DEFAULT NULL,
+    used_count INT DEFAULT 0,
+    starts_at DATE DEFAULT NULL,
+    expires_at DATE DEFAULT NULL,
+    status ENUM('active', 'inactive') DEFAULT 'active',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE coupon_usage (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    coupon_id INT NOT NULL,
+    user_id INT NOT NULL,
+    order_id INT NOT NULL,
+    used_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (coupon_id) REFERENCES coupons(id),
+    FOREIGN KEY (user_id) REFERENCES users(id),
+    FOREIGN KEY (order_id) REFERENCES orders(id)
+);
+
+ALTER TABLE orders
+    ADD COLUMN coupon_code VARCHAR(50) DEFAULT NULL AFTER total_amount,
+    ADD COLUMN discount_amount DECIMAL(10,2) DEFAULT 0 AFTER coupon_code;
+
+-- Example coupons (safe to delete)
+INSERT INTO coupons (code, discount_type, discount_value, min_order_amount, max_discount_amount, usage_limit, expires_at, status) VALUES
+('WELCOME10', 'percentage', 10.00, 500.00, 200.00, NULL, NULL, 'active'),
+('SAVE100', 'fixed', 100.00, 1000.00, NULL, 100, NULL, 'active');
+
+/* =========================================================================
+   1. PRODUCT-LEVEL DISCOUNTS
+   ========================================================================= */
+ALTER TABLE products
+    ADD COLUMN discount_percent DECIMAL(5,2) DEFAULT 0 AFTER price,
+    ADD COLUMN discount_starts_at DATE DEFAULT NULL AFTER discount_percent,
+    ADD COLUMN discount_ends_at DATE DEFAULT NULL AFTER discount_starts_at;
+
+/* =========================================================================
+   2. DELIVERY TRACKING
+   ========================================================================= */
+ALTER TABLE orders
+    ADD COLUMN courier_name VARCHAR(100) DEFAULT NULL AFTER status,
+    ADD COLUMN tracking_number VARCHAR(100) DEFAULT NULL AFTER courier_name;
+
+CREATE TABLE order_tracking (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    order_id INT NOT NULL,
+    status VARCHAR(50) NOT NULL,
+    location VARCHAR(150) DEFAULT NULL,
+    note VARCHAR(255) DEFAULT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (order_id) REFERENCES orders(id)
+);
+
+/* =========================================================================
+   3. REVIEWS & RATINGS
+   ========================================================================= */
+CREATE TABLE reviews (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    product_id INT NOT NULL,
+    user_id INT NOT NULL,
+    order_id INT DEFAULT NULL,
+    rating TINYINT NOT NULL,
+    comment TEXT,
+    status ENUM('approved', 'hidden') DEFAULT 'approved',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (product_id) REFERENCES products(id),
+    FOREIGN KEY (user_id) REFERENCES users(id),
+    FOREIGN KEY (order_id) REFERENCES orders(id),
+    UNIQUE KEY unique_user_product (user_id, product_id)
+);
+
+/* =========================================================================
+   4. WISHLIST
+   ========================================================================= */
+CREATE TABLE wishlist (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    user_id INT NOT NULL,
+    product_id INT NOT NULL,
+    added_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY unique_user_product_wishlist (user_id, product_id),
+    FOREIGN KEY (user_id) REFERENCES users(id),
+    FOREIGN KEY (product_id) REFERENCES products(id)
+);
+
+/* =========================================================================
+   5. PAYMENT GATEWAY (simulated bKash / Nagad / Rocket / Card)
+   ========================================================================= */
+ALTER TABLE orders
+    ADD COLUMN payment_status ENUM('unpaid', 'paid', 'failed') DEFAULT 'unpaid' AFTER payment_method,
+    ADD COLUMN payment_reference VARCHAR(100) DEFAULT NULL AFTER payment_status;

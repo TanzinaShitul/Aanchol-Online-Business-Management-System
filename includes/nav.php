@@ -10,6 +10,7 @@ $navWishlistHref = $navBasePath ? 'wishlist.php' : 'customer/wishlist.php';
 $navOrderHistoryHref = $navBasePath ? 'order-history.php' : 'customer/order-history.php';
 $navAccountHref = $navBasePath ? 'index.php' : 'customer/index.php';
 $navLogoutHref = $navBasePath ? 'logout.php' : 'customer/logout.php';
+$navAdminHref = $navBasePath ? '../admin/dashboard.php' : 'admin/dashboard.php';
 $navLogoSrc = $navBasePath ? '../images/uploads/logo/logo.png' : 'images/uploads/logo/logo.png';
 
 $categoryItems = function_exists('getCategories') ? getCategories() : [];
@@ -22,18 +23,17 @@ $wishlistCount = function_exists('isLoggedIn') && isLoggedIn() && function_exist
             <img src="<?= htmlspecialchars($navLogoSrc) ?>" class="navbar-logo me-2" alt="Aanchol Logo">
             <span class="navbar-brand-text">আঞ্চল-Aanchol</span>
         </a>
-        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+        <button class="navbar-toggler" type="button" data-nav-collapse="navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
             <span class="navbar-toggler-icon"></span>
         </button>
         <div class="collapse navbar-collapse" id="navbarNav">
             <ul class="navbar-nav me-auto">
                 <li class="nav-item"><a class="nav-link" href="<?= htmlspecialchars($navHomeHref) ?>">Home</a></li>
                 <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle" href="#" id="categoriesDropdown" role="button"
-                        data-bs-toggle="dropdown">
+                    <button class="nav-link dropdown-toggle border-0 bg-transparent" type="button" id="categoriesDropdown" data-nav-dropdown aria-expanded="false">
                         Categories
-                    </a>
-                    <ul class="dropdown-menu">
+                    </button>
+                    <ul class="dropdown-menu" aria-labelledby="categoriesDropdown">
                         <?php foreach ($categoryItems as $category): ?>
                             <li>
                                 <a class="dropdown-item" href="<?= htmlspecialchars($navProductsHref) ?>?category=<?= (int) $category['id'] ?>">
@@ -46,7 +46,7 @@ $wishlistCount = function_exists('isLoggedIn') && isLoggedIn() && function_exist
                 <li class="nav-item"><a class="nav-link" href="<?= htmlspecialchars($navProductsHref) ?>">All Products</a></li>
                 <li class="nav-item"><a class="nav-link" href="<?= htmlspecialchars($navTrackOrderHref) ?>">Track Order</a></li>
                 <?php if (function_exists('isLoggedIn') && isLoggedIn() && function_exists('isAdmin') && isAdmin()): ?>
-                    <li class="nav-item"><a class="nav-link text-danger" href="admin/dashboard.php">Admin Panel</a></li>
+                    <li class="nav-item"><a class="nav-link text-danger" href="<?= htmlspecialchars($navAdminHref) ?>">Admin Panel</a></li>
                 <?php endif; ?>
             </ul>
             <div class="d-flex align-items-center gap-3">
@@ -64,12 +64,12 @@ $wishlistCount = function_exists('isLoggedIn') && isLoggedIn() && function_exist
                         <?php endif; ?>
                     </a>
                     <div class="dropdown">
-                        <button class="btn btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                        <button class="btn btn-outline-secondary dropdown-toggle" type="button" data-nav-dropdown aria-expanded="false">
                             <i class="fas fa-user"></i> <?= htmlspecialchars($_SESSION['name'] ?? '') ?>
                         </button>
                         <ul class="dropdown-menu">
                             <?php if (function_exists('isAdmin') && isAdmin()): ?>
-                                <li><a class="dropdown-item" href="admin/dashboard.php">Admin Dashboard</a></li>
+                                <li><a class="dropdown-item" href="<?= htmlspecialchars($navAdminHref) ?>">Admin Dashboard</a></li>
                                 <li><hr class="dropdown-divider"></li>
                             <?php else: ?>
                                 <li><a class="dropdown-item" href="<?= htmlspecialchars($navAccountHref) ?>">My Account</a></li>
