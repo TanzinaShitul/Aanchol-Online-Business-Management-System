@@ -105,7 +105,7 @@ $reviews = getAllReviews();
                                         </td>
                                         <td>
                                             <a href="?toggle=<?= $review['id'] ?>" class="btn btn-sm btn-warning" title="Toggle visibility">
-                                                <i class="fas fa-eye<?= $review['status'] == 'approved' ? '-slash' : '' ?>"></i>
+                                                <i class="fas fa-eye<?= $review['status'] == 'approved' ? '' : '-slash' ?>"></i>
                                             </a>
                                             <a href="?delete=<?= $review['id'] ?>" class="btn btn-sm btn-danger"
                                                onclick="return confirm('Delete this review permanently?')">
